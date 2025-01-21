@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{film[1]}}</title>
+</head>
+<body>
+<h1>{{film[1]}}</h1>
+<img src={{film[6]}} alt="{{film[1]}}">
+<h2>{{film[2]}}</h2>
+<h3>{{film[3]}} minutes</h3>
+<p>Release date: {{film[4]}}</p>
+<p>Rating: {{film[5]}}</p>
+<p>Cast: {{film[7]}}</p>
+<p>Director: {{film[8]}}</p>
+{% for date, showings_for_date in showings_by_date.items() %}
+<h3>{{date}}</h3>
+<ul>
+    {% for showing in showings_for_date %}
+    <a href="/showing/{{showing[0]}}">
+        <li>Screen {{showing[2]}} - {{showing[3][11:]}}</li>
+    </a>
+
+    {% endfor %}
+</ul>
+{% endfor %}
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Main Page</title>
+</head>
+<body>
+{% if session.email %}
+<a href="/logout">
+    <button>Logout</button>
+</a>
+{% else %}
+<a href="/signup", methods="GET">
+    <button>Create an account</button>
+</a>
+<p></p>
+<a href="/login">
+    <button>Log in</button>
+</a>
+{% endif %}
+<h1>Welcome {{message}}</h1>
+<h2>Films showing today:</h2>
+{% for item in items %}
+<a href="/{{item[0]}}">
+    <h3>{{item[1]}}</h3>
+    <img src={{item[6]}} alt={{item[1]}}>
+</a>
+{% endfor %}
+</body>
+</html>

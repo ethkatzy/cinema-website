@@ -1,0 +1,27 @@
+<html lang="en">
+
+<head>
+  <title>Sign in</title>
+</head>
+
+<body>
+{%if message%}
+<p>
+  {{message}}
+</p>
+{% endif %}
+<form action="/login1" method="post">
+  <p>
+    Email: <br />
+    <input type="text" name="email" />
+  </p>
+  <p>
+    Password: <br />
+    <input type="password" name="password" />
+  </p>
+
+  <input type="submit" value="Sign in" />
+</form>
+</body>
+
+</html>
