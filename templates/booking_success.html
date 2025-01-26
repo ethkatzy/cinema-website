@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Successful</title>
+</head>
+<body>
+<h1>Booking Successful!</h1>
+<p>You have booked the following seats:</p>
+<ul>
+    {% for seat in selectedSeats %}
+    <li>{{ seat }}</li>
+    {% endfor %}
+</ul>
+<p>Total Price: £{{ totalPrice }}</p>
+<p>To edit seat selection go to your <a href="/account">account</a></p>
+<a href="/">Back to Home</a>
+</body>
+</html>

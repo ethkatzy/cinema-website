@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search</title>
+</head>
+<body>
+<a href="/">
+    <button>Return home</button>
+</a>
+<p></p>
+<form action="/search" method="post">
+    <label for="film">Film:</label>
+    <select name="film" id="film">
+        <option>All films</option>
+        {% for film in films %}
+        <option>{{film[0]}}</option>
+        {% endfor %}
+    </select>
+<label for="day">Days:</label>
+    <select name="day" id="day">
+        <option>All days</option>
+        {% for day in days %}
+        <option>{{day[0]}}</option>
+        {% endfor %}
+    </select>
+    <input type="submit" value="Search">
+</form>
+{% if showings %}
+<h1>Your search for {{search[0]}} on {{search[1]}}</h1>
+{% if not (search[0] == "All films") and search[1] == "All days" %}
+{% for day in days %}
+<h2>{{day[0]}}</h2>
+{% for showing in showings %}
+{% if day[0] == showing[1][:10] %}
+<a href="/showing/{{showing[3]}}">
+    <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
+</a>
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% else %}
+{% for film in films %}
+{% if search[0] == "All films" %}
+<a href="/{{film[1]}}">
+    <h2>{{film[0]}}</h2>
+</a>
+{% endif %}
+{% for day in days %}
+{% if search[1] == "All days" %}
+<h3>{{day[0]}}</h3>
+{% endif %}
+{% for showing in showings %}
+{% if film[1] == showing[4] and day[0] == showing[1][:10] %}
+<a href="/showing/{{showing[3]}}">
+    <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
+</a>
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endif %}
+</body>
+</html>

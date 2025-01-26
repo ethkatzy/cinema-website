@@ -9,8 +9,12 @@
 <a href="/logout">
     <button>Logout</button>
 </a>
+<p></p>
+<a href="/account">
+    <button>Account</button>
+</a>
 {% else %}
-<a href="/signup", methods="GET">
+<a href="/signup">
     <button>Create an account</button>
 </a>
 <p></p>
@@ -18,13 +22,25 @@
     <button>Log in</button>
 </a>
 {% endif %}
+<a href="/search">
+    <h2>Search for a showing</h2>
+</a>
 <h1>Welcome {{message}}</h1>
 <h2>Films showing today:</h2>
 {% for item in items %}
-<a href="/{{item[0]}}">
-    <h3>{{item[1]}}</h3>
-    <img src={{item[6]}} alt={{item[1]}}>
-</a>
+<div>
+    <a href="/{{item[0]}}">
+        <h3>{{item[1]}}</h3>
+        <img src={{item[6]}} alt={{item[1]}}>
+    </a>
+    {% for showing in showings %}
+    {% if showing[1] == item[0] %}
+    <a href="/showing/{{showing[0]}}">
+        <p>Screen {{showing[2]}} - {{showing[3][-5:]}}</p>
+    </a>
+    {% endif %}
+    {% endfor %}
+</div>
 {% endfor %}
 </body>
 </html>

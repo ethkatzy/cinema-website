@@ -47,7 +47,7 @@
 <body>
 <h1>Seat Selection</h1>
 <div class="screen">Screen</div>
-<form method="POST">
+<form method="POST" action="/edit/confirm">
     <div class="seat-grid">
         <!-- Row and Seat Labels -->
         <div class="seat-label"></div>
@@ -58,20 +58,27 @@
         <div class="row-label">{{ row }}</div>
         {% for col in range(1, 16) %}
         {% set seatId = seats|selectattr("rownum", "eq", row)|selectattr("seatnum", "eq", col)|map(attribute="seatid")|first %}
-        {% if seatId in bookedSeatIds %}
+        {% if seatId in bookedSeatIds and seatId not in userSeats %}
         <div class="seat booked">X</div>
+        {% elif seatId in userSeats %}
+        <label class="seat available">
+            <input type="checkbox" name="seats" value="{{ seatId }} {{bookingid}}" checked>
+        </label>
         {% else %}
         <label class="seat available">
-            <input type="checkbox" name="seats" value="{{ seatId }}">
+            <input type="checkbox" name="seats" value="{{ seatId }} {{bookingid}}">
         </label>
         {% endif %}
         {% endfor %}
         {% endfor %}
     </div>
     <div class="confirm-section">
+        {% if not (error == None) %}
         <p id="error" style="color: red;">{{ error }}</p>
+        {% endif %}
         <button type="submit">Confirm Booking</button>
     </div>
 </form>
+
 </body>
 </html>
