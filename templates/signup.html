@@ -1,37 +1,75 @@
 <html lang="en">
-
 <head>
     <title>Create an account</title>
+    <link rel="stylesheet" href="../static/login.css">
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
 </head>
-
 <body>
-<a href="/login">
-    <button>Already got an account? Log in here</button>
-</a>
+<div class="nav-bar">
+    <div class="nav-button">
+        <a href="/signup">
+            Create account
+        </a>
+    </div>
+    <div class="nav-button">
+        <a href="/login">
+            Log in
+        </a>
+    </div>
+    <a href="/search">
+        <img src="https://img.icons8.com/ios_filled/512/FFFFFF/search.png" alt="Search" class="search-icon">
+    </a>
+    <a href="/">
+        <img src="https://img.icons8.com/m_sharp/512/FFFFFF/home.png" alt="Home" class="home-icon">
+    </a>
+</div>
+
+<div class="login-box">
+    <div class="button">
+        <a href="/login">
+            Already got an account? Log in here
+        </a>
+    </div>
+
+    {%if message%}
+    <p style="color: red">
+        {{message}}
+    </p>
+    {% endif %}
 <form action="/create" method="post">
     <p>
         Full name: <br />
-        <input type="text" name="username" />
+        <label>
+            <input type="text" name="username" />
+        </label>
     </p>
     <p>
         Email: <br />
-        <input type="text" name="email" />
+        <label>
+            <input type="text" name="email" />
+        </label>
     </p>
     <p>
         Phone number: <br />
-        <input type="text" name="phonenumber" />
+        <label>
+            <input type="text" name="phone_number" />
+        </label>
     </p>
     <p>
     Password: <br />
-    <input type="password" name="password1" />
-</p>
+        <label>
+            <input type="password" name="password_1" />
+        </label>
+    </p>
     <p>
         Re-enter password: <br />
-        <input type="password" name="password2" />
+        <label>
+            <input type="password" name="password_2" />
+        </label>
     </p>
-
+    <p><br></p>
     <input type="submit" value="Create account" />
 </form>
+</div>
 </body>
-
 </html>

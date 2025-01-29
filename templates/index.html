@@ -3,43 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <title>Main Page</title>
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+    <link rel="stylesheet" href="../static/index.css">
 </head>
 <body>
-{% if session.email %}
-<a href="/logout">
-    <button>Logout</button>
-</a>
-<p></p>
-<a href="/account">
-    <button>Account</button>
-</a>
+<div class="nav-bar">
+    {% if session.email %}
+<div class="button">
+    <a href="/logout">
+        Logout
+    </a>
+</div>
+<div class="button">
+    <a href="/account">
+        Account
+    </a>
+</div>
 {% else %}
-<a href="/signup">
-    <button>Create an account</button>
-</a>
-<p></p>
-<a href="/login">
-    <button>Log in</button>
-</a>
+<div class="button">
+    <a href="/signup">
+        Create account
+    </a>
+</div>
+<div class="button">
+    <a href="/login">
+        Log in
+    </a>
+</div>
 {% endif %}
 <a href="/search">
-    <h2>Search for a showing</h2>
+    <img src="https://img.icons8.com/ios_filled/512/FFFFFF/search.png" alt="Search" class="search-icon">
 </a>
-<h1>Welcome {{message}}</h1>
-<h2>Films showing today:</h2>
+    <a href="/">
+        <img src="https://img.icons8.com/m_sharp/512/FFFFFF/home.png" alt="Home" class="home-icon">
+    </a>
+</div>
+<h1>Films showing today:</h1>
+<h1></h1>
 {% for item in items %}
-<div>
+<div class="film-box">
     <a href="/{{item[0]}}">
-        <h3>{{item[1]}}</h3>
-        <img src={{item[6]}} alt={{item[1]}}>
+        <img src={{item[5]}} alt={{item[1]}} class="poster">
     </a>
-    {% for showing in showings %}
-    {% if showing[1] == item[0] %}
-    <a href="/showing/{{showing[0]}}">
-        <p>Screen {{showing[2]}} - {{showing[3][-5:]}}</p>
-    </a>
-    {% endif %}
-    {% endfor %}
+    <div class="film-box-content">
+        <div class="title-image">
+            <a href="/{{item[0]}}">
+                <h3>{{item[1]}}</h3>
+            </a>
+            <img src="{{item[3]}}" alt="{{item[4]}} ">
+        </div>
+        <p>{{item[2]}}</p>
+        <div class="showings">
+            {% for showing in showings %}
+            {% if showing[1] == item[0] %}
+            <a href="/showing/{{showing[0]}}" class="showing-button">
+                Screen {{showing[2]}} - {{showing[3][-5:]}}
+            </a>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
 </div>
 {% endfor %}
 </body>

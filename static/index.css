@@ -1,0 +1,140 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+h1, h2, h3, p {
+    margin: 10px 0;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px;
+    border-radius: 15px;
+    text-decoration: none;
+    color: #3c3c3c;
+    background-color: #d7d7d7;
+    height: 25px;
+    width: 120px;
+    font-family: sans-serif;
+    text-align: center;
+    line-height: 25px;
+    margin-right: 10px;
+}
+
+.button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+div.button, h2 {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 10px;
+}
+
+h1 {
+    margin-left: 20px;
+}
+
+.film-box {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 15px;
+    background-color: #444;
+    margin: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.film-box-content {
+    display: flex;
+    flex-direction: column;
+    margin-left: 20px;
+    flex: 1;
+}
+
+.navbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.search-icon {
+    height: 35px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -13px;
+    margin-left: 10px;
+}
+
+.home-icon {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -15.5px;
+    margin-left: 20px;
+}
+
+.film-box .poster {
+    width: 150px;
+    height: auto;
+    margin-right: 20px;
+}
+
+.film-box h3 {
+    margin: 0 0 10px;
+    font-size: 27px;
+    display: inline-block;
+}
+
+.film-box .showing-button {
+    display: inline-block;
+    padding: 5px 10px;
+    margin-right: 10px;
+    border-radius: 15px;
+    text-decoration: none;
+    color: #3c3c3c;
+    background-color: #d7d7d7;
+    font-size: 1.2rem;
+    font-family: sans-serif;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.film-box .showing-button:hover, .button:hover {
+    background-color: #bbb;
+}
+
+.film-box .showings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.title-image-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.film-box img {
+    height: 28px;
+    margin-bottom: -2px;
+    margin-left: 5px;
+}
+

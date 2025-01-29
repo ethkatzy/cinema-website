@@ -1,0 +1,152 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #333;
+    padding: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+.search-icon {
+    height: 35px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -11px;
+    margin-left: 10px;
+}
+
+.home-icon {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -14px;
+    margin-left: 20px;
+}
+
+.nav-button {
+    display: inline-block;
+    padding: 10px;
+    border-radius: 15px;
+    text-decoration: none;
+    color: #3c3c3c;
+    background-color: #d7d7d7;
+    height: 25px;
+    width: 120px;
+    font-family: sans-serif;
+    text-align: center;
+    line-height: 25px;
+    margin-right: 10px;
+    margin-top: 10px;
+    margin-left: 10px;
+}
+
+.nav-button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+a {
+    text-decoration: none;
+}
+
+.screen {
+    text-align: center;
+    font-weight: bold;
+    background-color: grey;
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    width: 50%;
+    margin: 20px auto
+}
+
+.seat-grid {
+    display: grid;
+    grid-template-columns: repeat(16, auto);
+    gap: 5px;
+    justify-content: center;
+}
+
+.seat {
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    border: 1px solid black;
+    cursor: pointer;
+}
+
+.available {
+    background-color: #4ba54b;
+}
+
+.booked {
+    background-color: #d7d7d7;
+    pointer-events: none;
+    color: black;
+    cursor: not-allowed;
+}
+
+.booked:hover {
+    cursor: not-allowed;
+}
+
+.row-label, .seat-label {
+    background-color: transparent;
+    border: none;
+}
+
+.seat-label {
+    margin-left: 10px;
+}
+
+.row-label {
+    margin-top: 5px;
+}
+
+.confirm-section {
+    text-align: center;
+    margin-top: 20px;
+    color: red;
+}
+
+button {
+    border: none;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    color: #3c3c3c;
+    background-color: #d7d7d7;
+    border-radius: 15px;
+    margin: 10px auto;
+}
+
+.nav-button:hover, button:hover {
+    background-color: #bbb;
+}
+
+input[type=checkbox] {
+    cursor: pointer;
+}
+
+h1 {
+    padding-left: 10px;
+    text-align: center;
+}

@@ -2,54 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Seat Selection</title>
-    <style>
-        .screen {
-            text-align: center;
-            margin-bottom: 20px;
-            font-weight: bold;
-            background-color: grey;
-            color: white;
-            padding: 5px;
-            border-radius: 5px;
-        }
-        .seat-grid {
-            display: grid;
-            grid-template-columns: repeat(16, auto); /* 15 seats + labels */
-            gap: 5px;
-            justify-content: center;
-        }
-        .seat {
-            width: 30px;
-            height: 30px;
-            text-align: center;
-            line-height: 30px;
-            border: 1px solid black;
-            cursor: pointer;
-        }
-        .available {
-            background-color: lightgreen;
-        }
-        .booked {
-            background-color: lightgray;
-            pointer-events: none;
-        }
-        .row-label, .seat-label {
-            background-color: transparent;
-            border: none;
-        }
-        .confirm-section {
-            text-align: center;
-            margin-top: 20px;
-        }
-    </style>
+    <title>{{details[0][0]}} - {{details[0][1]}}</title>
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+    <link rel="stylesheet" href="../static/showing.css">
 </head>
 <body>
-<h1>Seat Selection</h1>
+<div class="nav-bar">
+    {% if session.email %}
+    <div class="nav-button">
+        <a href="/logout">
+            Logout
+        </a>
+    </div>
+    <div class="nav-button">
+        <a href="/account">
+            Account
+        </a>
+    </div>
+    {% else %}
+    <div class="nav-button">
+        <a href="/signup">
+            Create account
+        </a>
+    </div>
+    <div class="nav-button">
+        <a href="/login">
+            Log in
+        </a>
+    </div>
+    {% endif %}
+    <a href="/search">
+        <img src="https://img.icons8.com/ios_filled/512/FFFFFF/search.png" alt="Search" class="search-icon">
+    </a>
+    <a href="/">
+        <img src="https://img.icons8.com/m_sharp/512/FFFFFF/home.png" alt="Home" class="home-icon">
+    </a>
+</div>
+<h1>Seat Selection for {{details[0][0]}} on {{details[0][1]}}</h1>
 <div class="screen">Screen</div>
 <form method="POST" action="/edit/confirm">
     <div class="seat-grid">
-        <!-- Row and Seat Labels -->
         <div class="seat-label"></div>
         {% for col in range(1, 16) %}
         <div class="seat-label">{{ col }}</div>
@@ -58,15 +50,15 @@
         <div class="row-label">{{ row }}</div>
         {% for col in range(1, 16) %}
         {% set seatId = seats|selectattr("rownum", "eq", row)|selectattr("seatnum", "eq", col)|map(attribute="seatid")|first %}
-        {% if seatId in bookedSeatIds and seatId not in userSeats %}
+        {% if seatId in booked_seat_ids and seatId not in user_seats %}
         <div class="seat booked">X</div>
-        {% elif seatId in userSeats %}
+        {% elif seatId in user_seats %}
         <label class="seat available">
-            <input type="checkbox" name="seats" value="{{ seatId }} {{bookingid}}" checked>
+            <input type="checkbox" name="seats" value="{{ seatId }} {{booking_id}}" checked>
         </label>
         {% else %}
         <label class="seat available">
-            <input type="checkbox" name="seats" value="{{ seatId }} {{bookingid}}">
+            <input type="checkbox" name="seats" value="{{ seatId }} {{booking_id}}">
         </label>
         {% endif %}
         {% endfor %}
@@ -74,9 +66,9 @@
     </div>
     <div class="confirm-section">
         {% if not (error == None) %}
-        <p id="error" style="color: red;">{{ error }}</p>
+        <p id="error">{{ error }}</p>
         {% endif %}
-        <button type="submit">Confirm Booking</button>
+        <button type="submit">Edit Booking</button>
     </div>
 </form>
 

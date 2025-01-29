@@ -1,0 +1,141 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #333;
+    padding: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+.search-icon {
+    height: 35px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -11px;
+    margin-left: 10px;
+}
+
+.home-icon {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -14px;
+    margin-left: 20px;
+}
+
+.nav-button {
+    display: inline-block;
+    padding: 10px;
+    border-radius: 15px;
+    text-decoration: none;
+    color: #3c3c3c;
+    background-color: #d7d7d7;
+    height: 25px;
+    width: 120px;
+    font-family: sans-serif;
+    text-align: center;
+    line-height: 25px;
+    margin-right: 10px;
+    margin-top: 10px;
+    margin-left: 10px;
+}
+
+.nav-button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.film-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 20px;
+    margin: 20px;
+    padding: 20px;
+    background-color: #333;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+.film-poster {
+    max-width: 200px;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+.film-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.film-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.rating-icon {
+    height: 40px;
+}
+
+.date {
+    margin: 20px;
+    padding: 15px;
+    background-color: #333;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.showings-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.showing-button {
+    flex: 1;
+    max-width: 150px;
+}
+
+.showing-button a {
+    display: block;
+    padding: 10px;
+    background-color: #d7d7d7;
+    color: #333;
+    text-align: center;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 16px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.showing-button a:hover, .nav-button:hover {
+    background-color: #bbb;
+}
+
+a {
+    text-decoration: none;
+}
