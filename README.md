@@ -10,4 +10,4 @@
 * The user can make a booking for a iflm, including the number of seats, and picking which seat they want to sit in.
 
 ## How to run
-To run, just download all of the code, and run `main.py`. Then in a browser open `127.0.0.1:5000`.
+To run, just download the entire repository, and run `main.py`. Then in a browser open `127.0.0.1:5000`.
