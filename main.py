@@ -133,8 +133,9 @@ def booking(showing_id):
             cursor = conn.cursor()
             cursor.execute("SELECT userid FROM user WHERE email = ?", (session["email"],))
             userid = cursor.fetchone()[0]
-            cursor.execute("""INSERT INTO booking (userid, showingid, bookingtime, totalprice) 
-            VALUES (?, ?, datetime('now'), ?)""", (userid, showing_id, 8.99 * len(selected_seats)))
+            other_info = request.form.getlist("other-info")[0]
+            cursor.execute("""INSERT INTO booking (userid, showingid, bookingtime, totalprice, otherinfo) VALUES 
+            (?, ?, datetime('now'), ?, ?)""", (userid, showing_id, 8.99 * len(selected_seats), other_info))
             booking_id = cursor.lastrowid
             for seat_id in selected_seats:
                 cursor.execute("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",
@@ -169,7 +170,7 @@ def account():
             cursor.execute("SELECT userid, username FROM user WHERE email = ?", (session["email"],))
             user = cursor.fetchone()
             cursor.execute("""SELECT f.title, GROUP_CONCAT(se.rownum || se.seatnum, ', '), s.datetime, s.screenid, 
-            b.bookingid AS booked_seats, b.totalprice
+            b.bookingid AS booked_seats, b.totalprice, b.otherinfo
             FROM booking b
             JOIN bookingdetail bd ON b.bookingid = bd.bookingid
             JOIN showing s ON b.showingid = s.showingid
@@ -261,7 +262,7 @@ def edit(error=None):
                                         WHERE s.showingid = ?""", [showing_id, ])
         details = cursor.fetchall()
         return render_template("edit.html", seats=seats, booked_seat_ids=booked_seat_ids,
-                                   user_seats=user_seats, error=error, booking_id=booking_id, details=details)
+                               user_seats=user_seats, error=error, booking_id=booking_id, details=details)
 
 
 @app.route("/edit/confirm", methods=["POST"])
@@ -271,10 +272,11 @@ def edit_confirm():
         error = "Please select at least one seat!"
         return edit(error)
     booking_id = selected_seats[0].split()[1]
+    other_info = request.form.getlist("other-info")[0]
     with sqlite3.connect("CinemaDatabase.db") as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE booking SET bookingtime = datetime('now'), totalprice = ? WHERE bookingid = ?",
-                       [len(selected_seats) * 8.99, booking_id])
+        cursor.execute("""UPDATE booking SET bookingtime = datetime('now'), totalprice = ?, otherinfo = ? 
+        WHERE bookingid = ?""", [len(selected_seats) * 8.99, other_info, booking_id])
         cursor.execute("DELETE FROM bookingdetail WHERE bookingid = ?", (booking_id,))
         for seat in selected_seats:
             cursor.execute("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",

@@ -5,6 +5,7 @@ CREATE TABLE booking(
     showingid INTEGER,
     bookingtime TEXT,
     totalprice REAL,
+    otherinfo TEXT,
     FOREIGN KEY(userid) REFERENCES user(userid),
     FOREIGN KEY(showingid) REFERENCES showing(showingid)
     );

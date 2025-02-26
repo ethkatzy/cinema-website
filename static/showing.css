@@ -150,3 +150,12 @@ h1 {
     padding-left: 10px;
     text-align: center;
 }
+
+.other-info {
+    text-align: center;
+    padding: 10px
+}
+
+.other-info input {
+    width: 100%
+}

@@ -58,6 +58,11 @@
                 <button>Delete booking</button>
             </a>
         </div>
+        {% if booking[6] != "" %}
+        <div class="other-info">
+            <p>Other information: {{booking[6]}}</p>
+        </div>
+        {% endif %}
     </div>
     <div id="confirm-{{booking[4]}}" class="popup">
         <div class="popup-content">

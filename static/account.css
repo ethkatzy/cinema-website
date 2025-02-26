@@ -89,7 +89,6 @@ a {
 
 .booking-box {
     margin: 20px auto;
-    padding: 15px;
     background-color: #444;
     color: #fff;
     border-radius: 10px;
@@ -99,6 +98,8 @@ a {
     flex-direction: column;
     display: flex;
     justify-content: flex-start;
+    position: relative;
+    padding: 15px 15px 50px;
 }
 
 .booking-box h3 {
@@ -153,4 +154,13 @@ h1 {
     display: flex;
     justify-content: center;
     gap: 20px
+}
+
+.other-info {
+    text-align: center;
+    width: 100%;
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
 }
