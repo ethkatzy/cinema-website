@@ -14,7 +14,6 @@ Clone the repository, and make sure you have all the necessary libraries install
 ```
 pip install flask
 pip install sqlite3
-pip install werkzeug
 ```
 
 ### Re-installing the database:

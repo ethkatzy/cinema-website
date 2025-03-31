@@ -1,10 +1,17 @@
-from flask import Flask, render_template, request, redirect, session
+import secrets
+
+from flask import Flask, render_template, request, redirect, session, abort
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import config
 
 app = Flask(__name__)
 app.secret_key = config.secret_key
+
+
+def check_csrf():
+    if request.form["csrf_token"] != session["csrf_token"]:
+        abort(403)
 
 
 @app.route('/')
@@ -113,6 +120,7 @@ def booking(showing_id):
     if request.method == "POST":
         selected_seats = request.form.getlist("seats")
         if not selected_seats:
+            check_csrf()
             error = "Please select at least one seat!"
             with sqlite3.connect("CinemaDatabase.db") as conn:
                 cursor = conn.cursor()
@@ -125,11 +133,13 @@ def booking(showing_id):
                 cursor.execute("""SELECT f.title, s.datetime FROM showing s JOIN film f ON f.filmid = s.filmid 
                                         WHERE s.showingid = ?""", [showing_id, ])
                 details = cursor.fetchall()
+                session["csrf_token"] = secrets.token_hex(16)
                 return render_template("showing.html", seats=seats, booked_seat_ids=booked_seat_ids,
                                        details=details, error=error)
         elif not ("email" in session):
             return render_template("login.html")
         with sqlite3.connect("CinemaDatabase.db") as conn:
+            check_csrf()
             cursor = conn.cursor()
             cursor.execute("SELECT userid FROM user WHERE email = ?", (session["email"],))
             userid = cursor.fetchone()[0]
@@ -158,7 +168,8 @@ def booking(showing_id):
         cursor.execute("""SELECT f.title, s.datetime FROM showing s JOIN film f ON f.filmid = s.filmid 
         WHERE s.showingid = ?""", [showing_id, ])
         details = cursor.fetchall()
-    return render_template("showing.html", seats=seats, booked_seat_ids=booked_seat_ids,
+        session["csrf_token"] = secrets.token_hex(16)
+        return render_template("showing.html", seats=seats, booked_seat_ids=booked_seat_ids,
                            details=details)
 
 
@@ -179,6 +190,7 @@ def account():
             WHERE b.userid = ?
             GROUP BY b.bookingid, f.title;""", (user[0],))
             bookings = cursor.fetchall()
+            session["csrf_token"] = secrets.token_hex(16)
             return render_template("account.html", bookings=bookings, name=user[1])
     else:
         return render_template("login.html")
@@ -186,6 +198,7 @@ def account():
 
 @app.route("/delete", methods=["POST"])
 def delete():
+    check_csrf()
     booking_id = request.form["booking_id"]
     with sqlite3.connect("CinemaDatabase.db") as conn:
         cursor = conn.cursor()
@@ -235,6 +248,7 @@ def search():
             name = cursor.fetchone()[0]
         else:
             name = ""
+        session["csrf_token"] = secrets.token_hex(16)
         if not (showings == []):
             return render_template("search.html", films=films, days=days, showings=showings,
                                    search=user_search, search_type=search_type)
@@ -261,12 +275,14 @@ def edit(error=None):
         cursor.execute("""SELECT f.title, s.datetime FROM showing s JOIN film f ON f.filmid = s.filmid 
                                         WHERE s.showingid = ?""", [showing_id, ])
         details = cursor.fetchall()
+        session["csrf_token"] = secrets.token_hex(16)
         return render_template("edit.html", seats=seats, booked_seat_ids=booked_seat_ids,
                                user_seats=user_seats, error=error, booking_id=booking_id, details=details)
 
 
 @app.route("/edit/confirm", methods=["POST"])
 def edit_confirm():
+    check_csrf()
     selected_seats = request.form.getlist("seats")
     if not selected_seats:
         error = "Please select at least one seat!"

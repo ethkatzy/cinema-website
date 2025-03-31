@@ -75,6 +75,7 @@
         {% endif %}
         <button type="submit">Edit Booking</button>
     </div>
+    <input type="hidden" value="{{session.csrf_token}}" name="csrf_token"/>
 </form>
 
 </body>

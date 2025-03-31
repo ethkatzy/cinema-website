@@ -74,6 +74,7 @@
                 </a>
                 <form action="/delete" method="post">
                     <button value="{{booking[4]}}" name="booking_id">Yes</button>
+                    <input type="hidden" value="{{session.csrf_token}}" name="csrf_token"/>
                 </form>
             </div>
         </div>

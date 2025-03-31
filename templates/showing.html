@@ -69,6 +69,7 @@
         <p id="error">{{ error }}</p>
         <button type="submit">Confirm Booking</button>
     </div>
+    <input type="hidden" value="{{session.csrf_token}}" name="csrf_token"/>
 </form>
 </body>
 </html>
