@@ -5,6 +5,7 @@
     <title>{{details[0][0]}} - {{details[0][1]}}</title>
     <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
     <link rel="stylesheet" href="../static/showing.css">
+    <script src="../static/showing.js" defer></script>
 </head>
 <body>
 <div class="nav-bar">
@@ -53,7 +54,7 @@
         {% if seatId in booked_seat_ids and seatId not in user_seats %}
         <div class="seat booked">X</div>
         {% elif seatId in user_seats %}
-        <label class="seat available">
+        <label class="seat selected">
             <input type="checkbox" name="seats" value="{{ seatId }} {{booking_id}}" checked>
         </label>
         {% else %}
@@ -77,6 +78,5 @@
     </div>
     <input type="hidden" value="{{session.csrf_token}}" name="csrf_token"/>
 </form>
-
 </body>
 </html>

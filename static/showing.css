@@ -89,10 +89,16 @@ a {
     line-height: 30px;
     border: 1px solid black;
     cursor: pointer;
+    transition: background-color 0.3s;
+    background-color: green;
 }
 
-.available {
-    background-color: #4ba54b;
+.seat.selected {
+    background-color: red;
+}
+
+.seat input[type="checkbox"] {
+    display: none;
 }
 
 .booked {

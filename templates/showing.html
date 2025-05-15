@@ -5,6 +5,7 @@
     <title>{{details[0][0]}} - {{details[0][1]}}</title>
     <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
     <link rel="stylesheet" href="../static/showing.css">
+    <script src="../static/showing.js" defer></script>
 </head>
 <body>
 <div class="nav-bar">
@@ -51,7 +52,7 @@
         {% for col in range(1, 16) %}
         {% set seatId = seats|selectattr("rownum", "eq", row)|selectattr("seatnum", "eq", col)|map(attribute="seatid")|first %}
         {% if seatId in booked_seat_ids %}
-        <div class="seat booked">X</div>
+        <div class="seat booked"></div>
         {% else %}
         <label class="seat available">
             <input type="checkbox" name="seats" value="{{ seatId }}">
