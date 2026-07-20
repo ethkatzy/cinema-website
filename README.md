@@ -26,3 +26,11 @@ Do one of the following:
 * Execute `main.py` from the command line
 
 Then in a browser open `127.0.0.1:5000`.
+
+### Running tests
+Install the test dependency and run pytest from the repo root:
+```
+pip install -r requirements-dev.txt
+pytest
+```
+Tests run against a temporary SQLite database built from `schema.sql`, so they never touch `CinemaDatabase.db`.
