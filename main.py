@@ -8,15 +8,75 @@ import config
 app = Flask(__name__)
 app.secret_key = config.secret_key
 
+DB_PATH = "CinemaDatabase.db"
+TICKET_PRICE = 8.99
+
+
+def get_db():
+    return sqlite3.connect(DB_PATH)
+
 
 def check_csrf():
     if request.form["csrf_token"] != session["csrf_token"]:
         abort(403)
 
 
+def issue_csrf_token():
+    session["csrf_token"] = secrets.token_hex(16)
+
+
+def require_login():
+    if "email" not in session:
+        return render_template("login.html")
+    return None
+
+
+def get_user_by_email(cursor, email):
+    cursor.execute("SELECT userid, username FROM user WHERE email = ?", (email,))
+    return cursor.fetchone()
+
+
+def get_owned_booking(cursor, booking_id, email):
+    cursor.execute("""SELECT b.bookingid, b.showingid FROM booking b
+                    JOIN user u ON b.userid = u.userid
+                    WHERE b.bookingid = ? AND u.email = ?""", (booking_id, email))
+    row = cursor.fetchone()
+    if row is None:
+        abort(403)
+    return row
+
+
+def get_seats_for_showing(cursor, showing_id):
+    cursor.execute("""SELECT seatid, rownum, seatnum FROM seat WHERE screenid =
+        (SELECT screenid FROM showing WHERE showingid = ?)""", (showing_id,))
+    return [{"seatid": row[0], "rownum": row[1], "seatnum": row[2]} for row in cursor.fetchall()]
+
+
+def get_booked_seat_ids(cursor, showing_id, exclude_booking_id=None):
+    if exclude_booking_id is None:
+        cursor.execute("""SELECT seatid FROM bookingdetail WHERE bookingid IN
+            (SELECT bookingid FROM booking WHERE showingid = ?)""", (showing_id,))
+    else:
+        cursor.execute("""SELECT seatid FROM bookingdetail WHERE bookingid IN
+            (SELECT bookingid FROM booking
+            WHERE showingid = ? AND bookingid != ?)""", (showing_id, exclude_booking_id))
+    return {row[0] for row in cursor.fetchall()}
+
+
+def get_showing_details(cursor, showing_id):
+    cursor.execute("""SELECT f.title, s.datetime FROM showing s JOIN film f ON f.filmid = s.filmid
+        WHERE s.showingid = ?""", (showing_id,))
+    return cursor.fetchall()
+
+
+def validate_seat_selection(selected_seat_ids, valid_seat_ids, booked_seat_ids):
+    if not selected_seat_ids <= valid_seat_ids or selected_seat_ids & booked_seat_ids:
+        abort(409)
+
+
 @app.route('/')
 def index():
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""SELECT f.filmid, f.title, f.description, r.icon, f.rating, f.posterurl FROM film f
                        JOIN ratingicon r ON f.rating = r.rating""")
@@ -29,21 +89,20 @@ def index():
 
 @app.route("/<int:film_id>")
 def film_page(film_id):
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""SELECT f.title, f.description, f.duration, f.releasedate, r.icon, f.posterurl,
          f.actors, f.director, f.rating FROM film f JOIN ratingicon r ON r.rating = f.rating WHERE filmId = ?""",
                        (film_id,))
         film = cursor.fetchone()
-        showings = cursor.execute("SELECT showingid, screenid, datetime FROM showing WHERE filmid = ?",
-                                  (film_id,))
+        cursor.execute("SELECT showingid, screenid, datetime FROM showing WHERE filmid = ?",
+                       (film_id,))
+        showings = cursor.fetchall()
         if film:
             showings_by_date = {}
             for showing in showings:
                 date = showing[2][:10]
-                if date not in showings_by_date:
-                    showings_by_date[date] = []
-                showings_by_date[date].append(showing)
+                showings_by_date.setdefault(date, []).append(showing)
             runtime = int(film[2])
         return render_template("film.html", film=film, showings_by_date=showings_by_date,
                                runtime=runtime)
@@ -69,7 +128,7 @@ def create():
         message = "Passwords don't match"
         return render_template("signup.html", message=message)
     password_hash = generate_password_hash(password_1)
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    with get_db() as conn:
         cursor = conn.cursor()
         try:
             cursor.execute("INSERT INTO user (username, email, phonenumber, passwordhash) VALUES (?, ?, ?, ?)",
@@ -86,25 +145,21 @@ def create():
 def login_attempt():
     if "email" in session:
         return redirect("/")
-    try:
-        email = request.form["email"]
-        password = request.form["password"]
-        with sqlite3.connect("CinemaDatabase.db") as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT passwordhash FROM user WHERE email = ?", (email,))
-            user_account = cursor.fetchone()
-            if check_password_hash(user_account[0], password):
-                session["email"] = email
-                return redirect("/")
-            else:
-                return render_template("login.html", message="Invalid email or password")
-    except TypeError:
+    email = request.form["email"]
+    password = request.form["password"]
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT passwordhash FROM user WHERE email = ?", (email,))
+        user_account = cursor.fetchone()
+        if user_account is not None and check_password_hash(user_account[0], password):
+            session["email"] = email
+            return redirect("/")
         return render_template("login.html", message="Invalid email or password")
 
 
 @app.route("/login")
 def login():
-    if not ("email" in session):
+    if "email" not in session:
         return render_template("login.html")
     return redirect("/")
 
@@ -115,93 +170,89 @@ def logout():
     return redirect("/")
 
 
+def render_showing_page(showing_id, error=None):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        seats = get_seats_for_showing(cursor, showing_id)
+        booked_seat_ids = get_booked_seat_ids(cursor, showing_id)
+        details = get_showing_details(cursor, showing_id)
+        issue_csrf_token()
+        context = {"seats": seats, "booked_seat_ids": booked_seat_ids, "details": details}
+        if error is not None:
+            context["error"] = error
+        return render_template("showing.html", **context)
+
+
 @app.route("/showing/<int:showing_id>", methods=["POST", "GET"])
 def booking(showing_id):
-    if request.method == "POST":
-        selected_seats = request.form.getlist("seats")
-        if not selected_seats:
-            check_csrf()
-            error = "Please select at least one seat!"
-            with sqlite3.connect("CinemaDatabase.db") as conn:
-                cursor = conn.cursor()
-                cursor.execute("""SELECT seatid, rownum, seatnum FROM seat WHERE screenid = 
-                    (SELECT screenid FROM showing WHERE showingid = ?)""", (showing_id,))
-                seats = [{"seatid": row[0], "rownum": row[1], "seatnum": row[2]} for row in cursor.fetchall()]
-                cursor.execute("""SELECT seatid FROM bookingdetail WHERE bookingid IN 
-                (SELECT bookingid FROM booking WHERE showingid = ?)""", (showing_id,))
-                booked_seat_ids = {row[0] for row in cursor.fetchall()}
-                cursor.execute("""SELECT f.title, s.datetime FROM showing s JOIN film f ON f.filmid = s.filmid 
-                                        WHERE s.showingid = ?""", [showing_id, ])
-                details = cursor.fetchall()
-                session["csrf_token"] = secrets.token_hex(16)
-                return render_template("showing.html", seats=seats, booked_seat_ids=booked_seat_ids,
-                                       details=details, error=error)
-        elif not ("email" in session):
-            return render_template("login.html")
-        with sqlite3.connect("CinemaDatabase.db") as conn:
-            check_csrf()
-            cursor = conn.cursor()
-            cursor.execute("SELECT userid FROM user WHERE email = ?", (session["email"],))
-            userid = cursor.fetchone()[0]
-            other_info = request.form.getlist("other-info")[0]
-            cursor.execute("""INSERT INTO booking (userid, showingid, bookingtime, totalprice, otherinfo) VALUES 
-            (?, ?, datetime('now'), ?, ?)""", (userid, showing_id, 8.99 * len(selected_seats), other_info))
-            booking_id = cursor.lastrowid
-            for seat_id in selected_seats:
-                cursor.execute("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",
-                               (booking_id, seat_id))
-            conn.commit()
-            seats = []
-            for seat_id in selected_seats:
-                cursor.execute("SELECT rownum, seatnum FROM seat WHERE seatid = ?", (seat_id,))
-                seat = cursor.fetchone()
-                seats.append(seat[0] + str(seat[1]))
-        return redirect("/account")
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    if request.method != "POST":
+        return render_showing_page(showing_id)
+
+    selected_seats = request.form.getlist("seats")
+    if not selected_seats:
+        check_csrf()
+        return render_showing_page(showing_id, error="Please select at least one seat!")
+
+    resp = require_login()
+    if resp:
+        return resp
+
+    with get_db() as conn:
+        check_csrf()
         cursor = conn.cursor()
-        cursor.execute("""SELECT seatid, rownum, seatnum FROM seat WHERE screenid = 
-        (SELECT screenid FROM showing WHERE showingid = ?)""", (showing_id,))
-        seats = [{"seatid": row[0], "rownum": row[1], "seatnum": row[2]} for row in cursor.fetchall()]
-        cursor.execute("""SELECT seatid FROM bookingdetail WHERE bookingid IN 
-        (SELECT bookingid FROM booking WHERE showingid = ?)""", (showing_id,))
-        booked_seat_ids = {row[0] for row in cursor.fetchall()}
-        cursor.execute("""SELECT f.title, s.datetime FROM showing s JOIN film f ON f.filmid = s.filmid 
-        WHERE s.showingid = ?""", [showing_id, ])
-        details = cursor.fetchall()
-        session["csrf_token"] = secrets.token_hex(16)
-        return render_template("showing.html", seats=seats, booked_seat_ids=booked_seat_ids,
-                           details=details)
+        seats = get_seats_for_showing(cursor, showing_id)
+        valid_seat_ids = {seat["seatid"] for seat in seats}
+        booked_seat_ids = get_booked_seat_ids(cursor, showing_id)
+        try:
+            selected_seat_ids = {int(seat_id) for seat_id in selected_seats}
+        except ValueError:
+            abort(400)
+        validate_seat_selection(selected_seat_ids, valid_seat_ids, booked_seat_ids)
+
+        userid, _ = get_user_by_email(cursor, session["email"])
+        other_info = request.form.getlist("other-info")[0]
+        cursor.execute("""INSERT INTO booking (userid, showingid, bookingtime, totalprice, otherinfo) VALUES
+        (?, ?, datetime('now'), ?, ?)""",
+                       (userid, showing_id, TICKET_PRICE * len(selected_seat_ids), other_info))
+        booking_id = cursor.lastrowid
+        cursor.executemany("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",
+                            [(booking_id, seat_id) for seat_id in selected_seat_ids])
+        conn.commit()
+    return redirect("/account")
 
 
 @app.route("/account")
 def account():
-    if "email" in session:
-        with sqlite3.connect("CinemaDatabase.db") as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT userid, username FROM user WHERE email = ?", (session["email"],))
-            user = cursor.fetchone()
-            cursor.execute("""SELECT f.title, GROUP_CONCAT(se.rownum || se.seatnum, ', '), s.datetime, s.screenid, 
-            b.bookingid AS booked_seats, b.totalprice, b.otherinfo
-            FROM booking b
-            JOIN bookingdetail bd ON b.bookingid = bd.bookingid
-            JOIN showing s ON b.showingid = s.showingid
-            JOIN film f ON s.filmid = f.filmid
-            JOIN seat se ON bd.seatid = se.seatid
-            WHERE b.userid = ?
-            GROUP BY b.bookingid, f.title;""", (user[0],))
-            bookings = cursor.fetchall()
-            session["csrf_token"] = secrets.token_hex(16)
-            return render_template("account.html", bookings=bookings, name=user[1])
-    else:
-        return render_template("login.html")
+    resp = require_login()
+    if resp:
+        return resp
+    with get_db() as conn:
+        cursor = conn.cursor()
+        userid, username = get_user_by_email(cursor, session["email"])
+        cursor.execute("""SELECT f.title, GROUP_CONCAT(se.rownum || se.seatnum, ', '), s.datetime, s.screenid,
+        b.bookingid AS booked_seats, b.totalprice, b.otherinfo
+        FROM booking b
+        JOIN bookingdetail bd ON b.bookingid = bd.bookingid
+        JOIN showing s ON b.showingid = s.showingid
+        JOIN film f ON s.filmid = f.filmid
+        JOIN seat se ON bd.seatid = se.seatid
+        WHERE b.userid = ?
+        GROUP BY b.bookingid, f.title;""", (userid,))
+        bookings = cursor.fetchall()
+        issue_csrf_token()
+        return render_template("account.html", bookings=bookings, name=username)
 
 
 @app.route("/delete", methods=["POST"])
 def delete():
     check_csrf()
+    resp = require_login()
+    if resp:
+        return resp
     booking_id = request.form["booking_id"]
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    with get_db() as conn:
         cursor = conn.cursor()
+        get_owned_booking(cursor, booking_id, session["email"])
         cursor.execute("DELETE FROM booking WHERE bookingid = ?", (booking_id,))
         cursor.execute("DELETE FROM bookingdetail WHERE bookingid = ?", (booking_id,))
         conn.commit()
@@ -211,7 +262,7 @@ def delete():
 @app.route("/search", methods=["POST", "GET"])
 def search():
     showings = []
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    with get_db() as conn:
         cursor = conn.cursor()
         if request.method == "POST":
             film = request.form["film"]
@@ -244,59 +295,66 @@ def search():
         cursor.execute("SELECT DISTINCT date(datetime) FROM showing")
         days = cursor.fetchall()
         if "email" in session:
-            cursor.execute("SELECT username FROM user WHERE email = ?", (session["email"],))
-            name = cursor.fetchone()[0]
+            name = get_user_by_email(cursor, session["email"])[1]
         else:
             name = ""
-        session["csrf_token"] = secrets.token_hex(16)
+        issue_csrf_token()
         if not (showings == []):
             return render_template("search.html", films=films, days=days, showings=showings,
                                    search=user_search, search_type=search_type)
         return render_template("search.html", films=films, days=days, search_type=0, name=name)
 
 
-@app.route("/edit", methods=["POST"])
-def edit(error=None):
+def render_edit_page(error=None):
     booking_id = request.form["booking_id"]
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT showingid FROM booking WHERE bookingid = ?", (booking_id,))
-        showing_id = cursor.fetchone()[0]
-        cursor.execute(
-            "SELECT seatid, rownum, seatnum FROM seat WHERE screenid = "
-            "(SELECT screenid FROM showing WHERE showingid = ?)", (showing_id,))
-        seats = [{"seatid": row[0], "rownum": row[1], "seatnum": row[2]} for row in cursor.fetchall()]
-        cursor.execute(
-            "SELECT seatid FROM bookingdetail WHERE bookingid IN "
-            "(SELECT bookingid FROM booking WHERE showingid = ?)", (showing_id,))
-        booked_seat_ids = {row[0] for row in cursor.fetchall()}
+        _, showing_id = get_owned_booking(cursor, booking_id, session["email"])
+        seats = get_seats_for_showing(cursor, showing_id)
+        booked_seat_ids = get_booked_seat_ids(cursor, showing_id)
         cursor.execute("SELECT seatid FROM bookingdetail WHERE bookingid = ?", (booking_id,))
         user_seats = {row[0] for row in cursor.fetchall()}
-        cursor.execute("""SELECT f.title, s.datetime FROM showing s JOIN film f ON f.filmid = s.filmid 
-                                        WHERE s.showingid = ?""", [showing_id, ])
-        details = cursor.fetchall()
-        session["csrf_token"] = secrets.token_hex(16)
+        details = get_showing_details(cursor, showing_id)
+        issue_csrf_token()
         return render_template("edit.html", seats=seats, booked_seat_ids=booked_seat_ids,
                                user_seats=user_seats, error=error, booking_id=booking_id, details=details)
+
+
+@app.route("/edit", methods=["POST"])
+def edit():
+    resp = require_login()
+    if resp:
+        return resp
+    return render_edit_page()
 
 
 @app.route("/edit/confirm", methods=["POST"])
 def edit_confirm():
     check_csrf()
+    resp = require_login()
+    if resp:
+        return resp
     selected_seats = request.form.getlist("seats")
     if not selected_seats:
-        error = "Please select at least one seat!"
-        return edit(error)
+        return render_edit_page(error="Please select at least one seat!")
     booking_id = selected_seats[0].split()[1]
     other_info = request.form.getlist("other-info")[0]
-    with sqlite3.connect("CinemaDatabase.db") as conn:
+    with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("""UPDATE booking SET bookingtime = datetime('now'), totalprice = ?, otherinfo = ? 
-        WHERE bookingid = ?""", [len(selected_seats) * 8.99, other_info, booking_id])
+        _, showing_id = get_owned_booking(cursor, booking_id, session["email"])
+        seats = get_seats_for_showing(cursor, showing_id)
+        valid_seat_ids = {seat["seatid"] for seat in seats}
+        booked_seat_ids = get_booked_seat_ids(cursor, showing_id, exclude_booking_id=booking_id)
+        try:
+            selected_seat_ids = {int(seat.split()[0]) for seat in selected_seats}
+        except ValueError:
+            abort(400)
+        validate_seat_selection(selected_seat_ids, valid_seat_ids, booked_seat_ids)
+        cursor.execute("""UPDATE booking SET bookingtime = datetime('now'), totalprice = ?, otherinfo = ?
+        WHERE bookingid = ?""", (TICKET_PRICE * len(selected_seat_ids), other_info, booking_id))
         cursor.execute("DELETE FROM bookingdetail WHERE bookingid = ?", (booking_id,))
-        for seat in selected_seats:
-            cursor.execute("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",
-                           [booking_id, seat.split()[0]])
+        cursor.executemany("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",
+                            [(booking_id, seat_id) for seat_id in selected_seat_ids])
         conn.commit()
     return redirect("/account")
 
