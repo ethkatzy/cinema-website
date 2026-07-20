@@ -1,0 +1,5 @@
+line-length = 120
+exclude = [".venv", "__pycache__"]
+
+[lint]
+select = ["E", "F", "W"]
