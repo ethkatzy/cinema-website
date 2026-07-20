@@ -1,0 +1,6 @@
+CLAUDE.local.md
+.claude/settings.local.json
+__pycache__/
+.venv/
+.secret_key
+CinemaDatabase.db

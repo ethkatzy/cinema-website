@@ -1,4 +1,7 @@
+import os
 import secrets
+import time
+from collections import defaultdict
 
 from flask import Flask, render_template, request, redirect, session, abort
 import sqlite3
@@ -8,8 +11,17 @@ import config
 app = Flask(__name__)
 app.secret_key = config.secret_key
 
+IS_PRODUCTION = os.environ.get("FLASK_ENV", "development") != "development"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
+
 DB_PATH = "CinemaDatabase.db"
 TICKET_PRICE = 8.99
+
+LOGIN_ATTEMPT_LIMIT = 5
+LOGIN_ATTEMPT_WINDOW_SECONDS = 300
+_login_attempts = defaultdict(list)
 
 
 def get_db():
@@ -17,8 +29,35 @@ def get_db():
 
 
 def check_csrf():
-    if request.form["csrf_token"] != session["csrf_token"]:
+    token = request.form.get("csrf_token")
+    if not token or token != session.get("csrf_token"):
         abort(403)
+
+
+def check_login_rate_limit(key):
+    now = time.time()
+    attempts = [t for t in _login_attempts[key] if now - t < LOGIN_ATTEMPT_WINDOW_SECONDS]
+    _login_attempts[key] = attempts
+    if len(attempts) >= LOGIN_ATTEMPT_LIMIT:
+        abort(429)
+
+
+def record_login_failure(key):
+    _login_attempts[key].append(time.time())
+
+
+@app.after_request
+def set_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; img-src 'self' https:; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    )
+    if IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 def issue_csrf_token():
@@ -27,6 +66,7 @@ def issue_csrf_token():
 
 def require_login():
     if "email" not in session:
+        issue_csrf_token()
         return render_template("login.html")
     return None
 
@@ -98,12 +138,13 @@ def film_page(film_id):
         cursor.execute("SELECT showingid, screenid, datetime FROM showing WHERE filmid = ?",
                        (film_id,))
         showings = cursor.fetchall()
-        if film:
-            showings_by_date = {}
-            for showing in showings:
-                date = showing[2][:10]
-                showings_by_date.setdefault(date, []).append(showing)
-            runtime = int(film[2])
+        if not film:
+            abort(404)
+        showings_by_date = {}
+        for showing in showings:
+            date = showing[2][:10]
+            showings_by_date.setdefault(date, []).append(showing)
+        runtime = int(film[2])
         return render_template("film.html", film=film, showings_by_date=showings_by_date,
                                runtime=runtime)
 
@@ -112,6 +153,7 @@ def film_page(film_id):
 def signup():
     if "email" in session:
         return redirect("/")
+    issue_csrf_token()
     return render_template("signup.html")
 
 
@@ -119,12 +161,14 @@ def signup():
 def create():
     if "email" in session:
         return redirect("/")
+    check_csrf()
     username = request.form["username"]
     password_1 = request.form["password_1"]
     password_2 = request.form["password_2"]
     email = request.form["email"]
     phone_number = request.form["phone_number"]
     if password_1 != password_2:
+        issue_csrf_token()
         message = "Passwords don't match"
         return render_template("signup.html", message=message)
     password_hash = generate_password_hash(password_1)
@@ -135,6 +179,7 @@ def create():
                            (username, email, phone_number, password_hash))
             conn.commit()
         except sqlite3.IntegrityError:
+            issue_csrf_token()
             message = "That email already has an account"
             return render_template("signup.html", message=message)
         session["email"] = email
@@ -145,8 +190,11 @@ def create():
 def login_attempt():
     if "email" in session:
         return redirect("/")
+    check_csrf()
     email = request.form["email"]
     password = request.form["password"]
+    rate_limit_key = (request.remote_addr, email)
+    check_login_rate_limit(rate_limit_key)
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT passwordhash FROM user WHERE email = ?", (email,))
@@ -154,19 +202,22 @@ def login_attempt():
         if user_account is not None and check_password_hash(user_account[0], password):
             session["email"] = email
             return redirect("/")
+        record_login_failure(rate_limit_key)
+        issue_csrf_token()
         return render_template("login.html", message="Invalid email or password")
 
 
 @app.route("/login")
 def login():
     if "email" not in session:
+        issue_csrf_token()
         return render_template("login.html")
     return redirect("/")
 
 
 @app.route("/logout")
 def logout():
-    del session["email"]
+    session.pop("email", None)
     return redirect("/")
 
 
@@ -360,4 +411,4 @@ def edit_confirm():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=not IS_PRODUCTION)
