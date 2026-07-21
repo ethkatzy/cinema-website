@@ -42,12 +42,12 @@
 <h1></h1>
 {% for item in items %}
 <div class="film-box">
-    <a href="/{{item[0]}}">
+    <a href="/film/{{item[1]|slugify}}">
         <img src={{item[5]}} alt={{item[1]}} class="poster">
     </a>
     <div class="film-box-content">
         <div class="title-image">
-            <a href="/{{item[0]}}">
+            <a href="/film/{{item[1]|slugify}}">
                 <h3>{{item[1]}}</h3>
             </a>
             <img src="{{item[3]}}" alt="{{item[4]}} ">
@@ -56,7 +56,7 @@
         <div class="showings">
             {% for showing in showings %}
             {% if showing[1] == item[0] %}
-            <a href="/showing/{{showing[0]}}" class="showing-button">
+            <a href="/showing/{{showing[3][:10]}}/{{showing[3][11:]}}/screen-{{showing[2]}}" class="showing-button">
                 Screen {{showing[2]}} - {{showing[3][-5:]}}
             </a>
             {% endif %}

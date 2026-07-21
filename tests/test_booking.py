@@ -2,21 +2,28 @@ import sqlite3
 
 from conftest import create_booking_directly, get_seat_ids, login_session
 
-# Seeded in schema.sql: showing 1 is film 1 on screen 2; showing 2 is film 1 on screen 11.
+# Seeded in schema.sql: showing 1 is film 1 on screen 2 at 2025-01-18 14:05;
+# showing 2 is film 1 on screen 11 at 2025-01-18 14:50.
 # Different screens guarantee their seat id ranges don't overlap.
 SHOWING_ID = 1
 OTHER_SCREEN_SHOWING_ID = 2
+SHOWING_URL = "/showing/2025-01-18/14:05/screen-2"
 
 
 def test_showing_page_lists_seats(client):
-    resp = client.get(f"/showing/{SHOWING_ID}")
+    resp = client.get(SHOWING_URL)
     assert resp.status_code == 200
     assert b"Confirm Booking" in resp.data
 
 
+def test_showing_page_404s_for_nonexistent_showing(client):
+    resp = client.get("/showing/2025-01-18/14:05/screen-999")
+    assert resp.status_code == 404
+
+
 def test_booking_without_login_does_not_create_booking(client, db_path):
     seat_id = get_seat_ids(db_path, SHOWING_ID, limit=1)[0]
-    resp = client.post(f"/showing/{SHOWING_ID}", data={"seats": [str(seat_id)]})
+    resp = client.post(SHOWING_URL, data={"seats": [str(seat_id)]})
     assert resp.status_code == 200
     assert b"Sign in" in resp.data
     conn = sqlite3.connect(db_path)
@@ -26,7 +33,7 @@ def test_booking_without_login_does_not_create_booking(client, db_path):
 
 
 def test_booking_with_no_seats_requires_csrf(client):
-    resp = client.post(f"/showing/{SHOWING_ID}", data={})
+    resp = client.post(SHOWING_URL, data={})
     assert resp.status_code == 403
 
 
@@ -34,7 +41,7 @@ def test_booking_without_csrf_token_is_rejected(client, make_user, db_path):
     user = make_user(email="nocsrf-book@example.com")
     login_session(client, user["email"])
     seat_id = get_seat_ids(db_path, SHOWING_ID, limit=1)[0]
-    resp = client.post(f"/showing/{SHOWING_ID}", data={"seats": [str(seat_id)], "other-info": ""})
+    resp = client.post(SHOWING_URL, data={"seats": [str(seat_id)], "other-info": ""})
     assert resp.status_code == 403
 
 
@@ -43,7 +50,7 @@ def test_booking_creates_booking_for_logged_in_user(client, db_path, make_user):
     token = login_session(client, user["email"])
     seat_ids = get_seat_ids(db_path, SHOWING_ID, limit=2)
 
-    resp = client.post(f"/showing/{SHOWING_ID}", data={
+    resp = client.post(SHOWING_URL, data={
         "seats": [str(s) for s in seat_ids],
         "other-info": "wheelchair access",
         "csrf_token": token,
@@ -75,7 +82,7 @@ def test_booking_rejects_seat_already_booked_by_someone_else(client, db_path, ma
 
     second_user = make_user(email="second-booker@example.com")
     token = login_session(client, second_user["email"])
-    resp = client.post(f"/showing/{SHOWING_ID}", data={
+    resp = client.post(SHOWING_URL, data={
         "seats": [str(seat_id)], "other-info": "", "csrf_token": token,
     })
     assert resp.status_code == 409
@@ -85,7 +92,7 @@ def test_booking_rejects_seat_not_belonging_to_showings_screen(client, db_path, 
     seat_from_other_screen = get_seat_ids(db_path, OTHER_SCREEN_SHOWING_ID, limit=1)[0]
     user = make_user(email="wrongscreen@example.com")
     token = login_session(client, user["email"])
-    resp = client.post(f"/showing/{SHOWING_ID}", data={
+    resp = client.post(SHOWING_URL, data={
         "seats": [str(seat_from_other_screen)], "other-info": "", "csrf_token": token,
     })
     assert resp.status_code == 409

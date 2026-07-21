@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 import time
 from collections import defaultdict
@@ -38,6 +39,36 @@ def get_db():
 
 
 init_db_if_needed()
+
+
+def slugify(text):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+app.jinja_env.filters["slugify"] = slugify
+
+
+def find_film_id_by_slug(cursor, slug):
+    cursor.execute("SELECT filmid, title FROM film")
+    for film_id, title in cursor.fetchall():
+        if slugify(title) == slug:
+            return film_id
+    return None
+
+
+def resolve_showing_id(cursor, date, time_, screen_slug):
+    if not screen_slug.startswith("screen-"):
+        abort(404)
+    try:
+        screen_id = int(screen_slug.removeprefix("screen-"))
+    except ValueError:
+        abort(404)
+    cursor.execute("SELECT showingid FROM showing WHERE datetime = ? AND screenid = ?",
+                   (f"{date} {time_}", screen_id))
+    row = cursor.fetchone()
+    if row is None:
+        abort(404)
+    return row[0]
 
 
 def check_csrf():
@@ -139,10 +170,13 @@ def index():
     return render_template("index.html", items=results, showings=showings)
 
 
-@app.route("/<int:film_id>")
-def film_page(film_id):
+@app.route("/film/<slug>")
+def film_page(slug):
     with get_db() as conn:
         cursor = conn.cursor()
+        film_id = find_film_id_by_slug(cursor, slug)
+        if film_id is None:
+            abort(404)
         cursor.execute("""SELECT f.title, f.description, f.duration, f.releasedate, r.icon, f.posterurl,
          f.actors, f.director, f.rating FROM film f JOIN ratingicon r ON r.rating = f.rating WHERE filmId = ?""",
                        (film_id,))
@@ -246,8 +280,11 @@ def render_showing_page(showing_id, error=None):
         return render_template("showing.html", **context)
 
 
-@app.route("/showing/<int:showing_id>", methods=["POST", "GET"])
-def booking(showing_id):
+@app.route("/showing/<date>/<time_>/<screen_slug>", methods=["POST", "GET"])
+def booking(date, time_, screen_slug):
+    with get_db() as conn:
+        showing_id = resolve_showing_id(conn.cursor(), date, time_, screen_slug)
+
     if request.method != "POST":
         return render_showing_page(showing_id)
 

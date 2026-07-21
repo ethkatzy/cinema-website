@@ -67,7 +67,7 @@
     <div class="showings-container">
         {% for showing in showings %}
         <div class="showing-button">
-            <a href="/showing/{{showing[3]}}">
+            <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
                 <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
             </a>
         </div>
@@ -77,14 +77,14 @@
 {% elif search_type == 2 %}
 {% for film in films %}
 <div class="film-box">
-    <a href="/{{film[1]}}">
+    <a href="/film/{{film[0]|slugify}}">
         <h2>{{film[0]}}</h2>
     </a>
     <div class="showings-container">
         {% for showing in showings %}
         {% if film[1] == showing[4] %}
         <div class="showing-button">
-            <a href="/showing/{{showing[3]}}">
+            <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
                 <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
             </a>
         </div>
@@ -101,7 +101,7 @@
         {% for showing in showings %}
         {% if day[0] == showing[1][:10] %}
         <div class="showing-button">
-            <a href="/showing/{{showing[3]}}">
+            <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
                 <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
             </a>
         </div>
@@ -113,7 +113,7 @@
 {% elif search_type == 4 %}
 {% for film in films %}
 <div class="film-box">
-    <a href="/{{film[1]}}">
+    <a href="/film/{{film[0]|slugify}}">
         <h2>{{film[0]}}</h2>
     </a>
     {% for day in days %}
@@ -123,7 +123,7 @@
             {% for showing in showings %}
             {% if showing[4] == film[1] and showing[1][:10] == day[0] %}
             <div class="showing-button">
-                <a href="showing/{{showing[3]}}">
+                <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
                         <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
                 </a>
             </div>
