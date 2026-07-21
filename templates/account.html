@@ -50,6 +50,12 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="empty-state">
+    <h2>You don't have any bookings yet</h2>
+    <p>Find a film you fancy and grab a seat.</p>
+    <a href="/search" class="button">Browse showings</a>
+</div>
 {% endfor %}
 </body>
 </html>
