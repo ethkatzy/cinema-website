@@ -41,6 +41,64 @@ def test_signup_password_mismatch_does_not_create_account(client, db_path):
     assert count == 0
 
 
+def test_signup_invalid_email_rejected(client, db_path):
+    token = csrf_token_from_get(client, "/signup")
+    resp = client.post("/create", data={
+        "username": "New User",
+        "password_1": "Sup3rSecret!",
+        "password_2": "Sup3rSecret!",
+        "email": "not-an-email",
+        "phone_number": "07123456789",
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    assert b"valid email" in resp.data
+    conn = sqlite3.connect(db_path)
+    count = conn.execute("SELECT COUNT(*) FROM user WHERE username = ?", ("New User",)).fetchone()[0]
+    conn.close()
+    assert count == 0
+
+
+def test_signup_invalid_phone_rejected(client, db_path):
+    token = csrf_token_from_get(client, "/signup")
+    resp = client.post("/create", data={
+        "username": "New User",
+        "password_1": "Sup3rSecret!",
+        "password_2": "Sup3rSecret!",
+        "email": "newuser2@example.com",
+        "phone_number": "phone-me-maybe",
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    assert b"valid phone" in resp.data
+    conn = sqlite3.connect(db_path)
+    count = conn.execute(
+        "SELECT COUNT(*) FROM user WHERE email = ?", ("newuser2@example.com",)
+    ).fetchone()[0]
+    conn.close()
+    assert count == 0
+
+
+def test_signup_weak_password_rejected(client, db_path):
+    token = csrf_token_from_get(client, "/signup")
+    resp = client.post("/create", data={
+        "username": "New User",
+        "password_1": "weak",
+        "password_2": "weak",
+        "email": "newuser3@example.com",
+        "phone_number": "07123456789",
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    assert b"at least 8 characters" in resp.data
+    conn = sqlite3.connect(db_path)
+    count = conn.execute(
+        "SELECT COUNT(*) FROM user WHERE email = ?", ("newuser3@example.com",)
+    ).fetchone()[0]
+    conn.close()
+    assert count == 0
+
+
 def test_signup_duplicate_email_rejected(client, make_user):
     user = make_user(email="dupe@example.com")
     token = csrf_token_from_get(client, "/signup")

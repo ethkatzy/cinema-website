@@ -47,6 +47,8 @@ body {
 }
 
 input[type="text"],
+input[type="email"],
+input[type="tel"],
 input[type="password"] {
     width: 200px;
     height: 40px;

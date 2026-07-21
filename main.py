@@ -52,6 +52,11 @@ def slugify(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PHONE_PATTERN = re.compile(r"^\+?[0-9]{7,15}$")
+PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
+
+
 app.jinja_env.filters["slugify"] = slugify
 
 
@@ -311,10 +316,19 @@ def create():
     password_2 = request.form["password_2"]
     email = request.form["email"]
     phone_number = request.form["phone_number"]
+    if not EMAIL_PATTERN.match(email):
+        issue_csrf_token()
+        return render_template("signup.html", message="Enter a valid email address")
+    if not PHONE_PATTERN.match(phone_number):
+        issue_csrf_token()
+        return render_template("signup.html", message="Enter a valid phone number")
     if password_1 != password_2:
         issue_csrf_token()
-        message = "Passwords don't match"
-        return render_template("signup.html", message=message)
+        return render_template("signup.html", message="Passwords don't match")
+    if not PASSWORD_PATTERN.match(password_1):
+        issue_csrf_token()
+        return render_template("signup.html",
+                                message="Password must be at least 8 characters and include a letter and a number")
     password_hash = generate_password_hash(password_1)
     with get_db() as conn:
         cursor = conn.cursor()
