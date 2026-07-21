@@ -49,25 +49,27 @@ def client(app):
 @pytest.fixture()
 def make_user(db_path):
     def _make(email="user@example.com", password="Password123!",
-              username="Test User", phone="07000000000"):
+              username="Test User", phone="07000000000", is_admin=False):
         conn = sqlite3.connect(db_path)
         conn.execute(
-            "INSERT INTO user (username, email, phonenumber, passwordhash) VALUES (?, ?, ?, ?)",
-            (username, email, phone, generate_password_hash(password)),
+            "INSERT INTO user (username, email, phonenumber, passwordhash, isadmin) VALUES (?, ?, ?, ?, ?)",
+            (username, email, phone, generate_password_hash(password), int(is_admin)),
         )
         conn.commit()
         userid = conn.execute("SELECT userid FROM user WHERE email = ?", (email,)).fetchone()[0]
         conn.close()
-        return {"userid": userid, "email": email, "password": password, "username": username}
+        return {"userid": userid, "email": email, "password": password, "username": username,
+                "is_admin": is_admin}
 
     return _make
 
 
-def login_session(client, email, csrf_token="test-csrf-token"):
+def login_session(client, email, csrf_token="test-csrf-token", is_admin=False):
     """Log a test client in directly via the session, bypassing the real login form."""
     with client.session_transaction() as sess:
         sess["email"] = email
         sess["csrf_token"] = csrf_token
+        sess["is_admin"] = is_admin
     return csrf_token
 
 

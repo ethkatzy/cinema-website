@@ -35,8 +35,8 @@ CREATE TABLE film (
     director TEXT
     );
 INSERT INTO "film" VALUES(1,'Mufasa: The Lion King','Simba, having become king of the Pride Lands, is determined for his cub to follow in his footsteps while the origins of his late father Mufasa are explored.',118.0,'20th Dec 2024','PG','https://upload.wikimedia.org/wikipedia/en/0/0b/Mufasa_The_Lion_King_Movie_2024.jpeg','Aaron Pierre, Kelvin Harrison Jr., Seth Rogen, Billy Eichner, John Kani','Barry Jenkins');
-INSERT INTO "film" VALUES(2,'A Complete Unknown','Set in the influential New York music scene of the early 60s, A COMPLETE UNKNOWN follows 19-year-old Minnesota musician BOB DYLANs meteoric rise as a folk singer.',140.0,'17th Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/d/d5/A_Complete_Unknown_poster.jpg','Timoth�e Chalamet, Elle Fanning, Scoot McNairy, Dan Fogler, Boyd Holbrook, Edward Norton, Norbert Leo Butz, Monica Barbaro','James Mangold');
-INSERT INTO "film" VALUES(3,'Nosferatu','Robert Eggers Nosferatu is a gothic tale of obsession between a haunted young woman and the terrifying vampire infatuated with her, causing untold horror in its wake.',132.0,'1st Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/4/48/Nosferatu_IMAX_poster_2024.jpg','Emma Corrin, Aaron Taylor-Johnson, Bill Skarsg�rd, Nicholas Hoult, Willem Dafoe','Robert Eggers');
+INSERT INTO "film" VALUES(2,'A Complete Unknown','Set in the influential New York music scene of the early 60s, A COMPLETE UNKNOWN follows 19-year-old Minnesota musician BOB DYLANs meteoric rise as a folk singer.',140.0,'17th Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/d/d5/A_Complete_Unknown_poster.jpg','Timothee Chalamet, Elle Fanning, Scoot McNairy, Dan Fogler, Boyd Holbrook, Edward Norton, Norbert Leo Butz, Monica Barbaro','James Mangold');
+INSERT INTO "film" VALUES(3,'Nosferatu','Robert Eggers Nosferatu is a gothic tale of obsession between a haunted young woman and the terrifying vampire infatuated with her, causing untold horror in its wake.',132.0,'1st Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/4/48/Nosferatu_IMAX_poster_2024.jpg','Emma Corrin, Aaron Taylor-Johnson, Bill Skarsgard, Nicholas Hoult, Willem Dafoe','Robert Eggers');
 INSERT INTO "film" VALUES(4,'Sonic the Hedgehog 3','Sonic, Knuckles, and Tails reunite against a powerful new adversary, Shadow, a mysterious villain with powers unlike anything they have faced before.',110.0,'21st Dec 2024','PG','https://upload.wikimedia.org/wikipedia/en/f/f2/Sonic_the_Hedgehog_3_film_poster.jpg','Ben Schwartz, Colleen O''Shaughnessey, Idris Elba, Keanu Reeves, Jim Carrey','Jeff Fowler');
 INSERT INTO "film" VALUES(5,'We Live in Time','An up-and-coming chef and a recent divorce find their lives forever changed when a chance encounter brings them together, in a decade-spanning, deeply moving romance.',107.0,'1st Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/3/32/We_live_in_time_poster.jpg','Andrew Garfield, Florence Pugh, Marama Corlett, Adam James','John Crowley');
 INSERT INTO "film" VALUES(6,'Moana 2','After receiving an unexpected call from her wayfinding ancestors, Moana must journey to the far seas of Oceania and into dangerous, long-lost waters for an adventure.',100.0,'29th Nov 2024','PG','https://upload.wikimedia.org/wikipedia/en/7/73/Moana_2_poster.jpg','Auli''i Cravalho, Dwayne Johnson, Alan Tudyk','Dave Derrick Jr.');
@@ -1942,8 +1942,11 @@ CREATE TABLE user(
     userid INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
     phonenumber VARCHAR(15)
-    , passwordhash TEXT, email TEXT);
+    , passwordhash TEXT, email TEXT, isadmin INTEGER NOT NULL DEFAULT 0);
 CREATE UNIQUE INDEX idx_unique_email ON user(email);
+INSERT INTO "user" (username, phonenumber, passwordhash, email, isadmin) VALUES
+    ('Admin', NULL, 'scrypt:32768:8:1$MfTwItBSI62bIf7M$beae9eee32444c931249abf79b45698e8c438f03b35cecb98ac3efb61ff175b2abac626bef1dc7788133fc2d6619119ca86106e28d7ed116e145038592eba605',
+     'admin@cinema.local', 1);
 DELETE FROM "sqlite_sequence";
 INSERT INTO "sqlite_sequence" VALUES('film',81);
 INSERT INTO "sqlite_sequence" VALUES('screen',11);

@@ -1,0 +1,29 @@
+<html lang="en">
+<head>
+    <title>Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+</head>
+<body>
+{% include "_banner.html" %}
+
+<div class="login-box">
+    <h1 style="color:white">Admin</h1>
+    <div class="button">
+        <a href="/admin/films/new">
+            Add a film
+        </a>
+    </div>
+    <div class="button">
+        <a href="/admin/screens/new">
+            Add a screen
+        </a>
+    </div>
+    <div class="button">
+        <a href="/admin/showings/new">
+            Add a showing
+        </a>
+    </div>
+</div>
+</body>
+</html>

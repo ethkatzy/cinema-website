@@ -9,6 +9,7 @@
 * The user page shows all past and future bookings the user has.
 * The user can select one or more classifications for the film.
 * The user can make a booking for a film, including the number of seats, and picking which seat they want to sit in.
+* An admin account can add new films, screens, and showings from `/admin` without editing `schema.sql` by hand.
 
 ## How to run
 Clone the repository, and install the dependencies from the repo root:
@@ -26,6 +27,13 @@ Do one of the following:
 * Execute `main.py` from the command line
 
 Then in a browser open `127.0.0.1:5000`.
+
+### Admin access
+`schema.sql` seeds one demo admin account:
+* Email: `admin@cinema.local`
+* Password: `AdminDemo123!`
+
+Log in with those credentials and an "Admin" link appears in the nav bar, linking to `/admin` — forms for adding films, screens, and showings. This is a demo credential for coursework purposes only; rotate or remove it before any real deployment.
 
 ### Running tests
 Install the test dependency and run pytest from the repo root:

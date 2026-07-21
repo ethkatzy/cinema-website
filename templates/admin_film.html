@@ -1,0 +1,82 @@
+<html lang="en">
+<head>
+    <title>Add a film</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+</head>
+<body>
+{% include "_banner.html" %}
+
+<div class="login-box">
+    <div class="button">
+        <a href="/admin">
+            Back to admin
+        </a>
+    </div>
+
+    {% if error %}
+    <p style="color: red">
+        {{ error }}
+    </p>
+    {% endif %}
+    <form action="/admin/films/new" method="post">
+        <p>
+            Title: <br />
+            <label>
+                <input type="text" name="title" required />
+            </label>
+        </p>
+        <p>
+            Description: <br />
+            <label>
+                <textarea name="description" rows="4"></textarea>
+            </label>
+        </p>
+        <p>
+            Runtime (minutes): <br />
+            <label>
+                <input type="number" name="duration" min="1" step="1" required />
+            </label>
+        </p>
+        <p>
+            Release date: <br />
+            <label>
+                <input type="text" name="releasedate" placeholder="e.g. 20th Dec 2024" />
+            </label>
+        </p>
+        <p>
+            Age rating: <br />
+            <label>
+                <select name="rating" required>
+                    <option value="" disabled selected>Select a rating</option>
+                    {% for rating in ratings %}
+                    <option value="{{ rating }}">{{ rating }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </p>
+        <p>
+            Poster URL: <br />
+            <label>
+                <input type="url" name="posterurl" />
+            </label>
+        </p>
+        <p>
+            Actors: <br />
+            <label>
+                <input type="text" name="actors" />
+            </label>
+        </p>
+        <p>
+            Director: <br />
+            <label>
+                <input type="text" name="director" />
+            </label>
+        </p>
+        <p><br></p>
+        <input type="submit" value="Add film" />
+        <input type="hidden" value="{{ session.csrf_token }}" name="csrf_token" />
+    </form>
+</div>
+</body>
+</html>

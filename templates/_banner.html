@@ -10,6 +10,13 @@
             Account
         </a>
     </div>
+    {% if session.is_admin %}
+    <div class="{{ nav_button_class | default('nav-button') }}">
+        <a href="/admin">
+            Admin
+        </a>
+    </div>
+    {% endif %}
     {% else %}
     <div class="{{ nav_button_class | default('nav-button') }}">
         <a href="/signup">

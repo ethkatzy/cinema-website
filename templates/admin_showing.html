@@ -1,0 +1,77 @@
+<html lang="en">
+<head>
+    <title>Add a showing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+</head>
+<body>
+{% include "_banner.html" %}
+
+<div class="login-box">
+    <div class="button">
+        <a href="/admin">
+            Back to admin
+        </a>
+    </div>
+
+    {% if error %}
+    <p style="color: red">
+        {{ error }}
+    </p>
+    {% endif %}
+    <form action="/admin/showings/new" method="post">
+        <p>
+            Film: <br />
+            <label>
+                <select name="film_id" required>
+                    <option value="" disabled selected>Select a film</option>
+                    {% for filmid, title in films %}
+                    <option value="{{ filmid }}">{{ title }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </p>
+        <p>
+            Screen: <br />
+            <label>
+                <select name="screen_id" required>
+                    <option value="" disabled selected>Select a screen</option>
+                    {% for screenid, screenname in screens %}
+                    <option value="{{ screenid }}">{{ screenname }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </p>
+        <p>
+            Start date: <br />
+            <label>
+                <input type="date" name="start_date" required />
+            </label>
+        </p>
+        <p>
+            End date (optional — leave blank for a single showing): <br />
+            <label>
+                <input type="date" name="end_date" />
+            </label>
+        </p>
+        <p>
+            Repeat on (optional — leave unchecked to only show on the start date): <br />
+            {% for value, label in [(1, "Mon"), (2, "Tue"), (3, "Wed"), (4, "Thu"), (5, "Fri"), (6, "Sat"), (7, "Sun")] %}
+            <label style="margin-right: 0.75em">
+                <input type="checkbox" name="weekdays" value="{{ value }}" /> {{ label }}
+            </label>
+            {% endfor %}
+        </p>
+        <p>
+            Time: <br />
+            <label>
+                <input type="time" name="time" required />
+            </label>
+        </p>
+        <p><br></p>
+        <input type="submit" value="Add showing" />
+        <input type="hidden" value="{{ session.csrf_token }}" name="csrf_token" />
+    </form>
+</div>
+</body>
+</html>

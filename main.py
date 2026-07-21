@@ -24,6 +24,10 @@ DB_PATH = "CinemaDatabase.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 TICKET_PRICE = 8.99
 SHOWING_WINDOW_DAYS = 14
+MAX_SHOWINGS_PER_DAY_PER_FILM = 4
+MAX_TEMPLATE_RANGE_DAYS = 90
+SCREEN_ROWS = "ABCDEFGHIJ"
+SEATS_PER_ROW = 15
 
 ShowingInstance = namedtuple("ShowingInstance", ["filmid", "screenid", "datetime"])
 
@@ -157,6 +161,54 @@ def resolve_or_create_showing_id(cursor, date_, time_, screen_slug):
         return cursor.fetchone()[0]
 
 
+def showing_window(showing_datetime, duration_minutes):
+    start = dt.datetime.strptime(showing_datetime, "%Y-%m-%d %H:%M")
+    return start, start + dt.timedelta(minutes=duration_minutes)
+
+
+def get_screen_showings_on_date(cursor, screen_id, date_str):
+    """(datetime, duration) pairs for every real or template-virtual showing
+    on a screen for one date, so overlap checks see showings that haven't
+    been materialized into the showing table yet."""
+    cursor.execute("""SELECT s.datetime, f.duration FROM showing s JOIN film f ON f.filmid = s.filmid
+        WHERE s.screenid = ? AND date(s.datetime) = ?""", (screen_id, date_str))
+    results = list(cursor.fetchall())
+    day = dt.date.fromisoformat(date_str)
+    cursor.execute("SELECT filmid, duration FROM film")
+    durations = dict(cursor.fetchall())
+    for instance in generate_showing_instances(cursor, start=day, days_ahead=0):
+        if instance.screenid == screen_id and instance.datetime[:10] == date_str:
+            results.append((instance.datetime, durations.get(instance.filmid)))
+    return results
+
+
+def has_overlap(new_start, new_end, existing):
+    for other_datetime, other_duration in existing:
+        if other_duration is None:
+            continue
+        other_start, other_end = showing_window(other_datetime, other_duration)
+        if new_start < other_end and other_start < new_end:
+            return True
+    return False
+
+
+def count_showings_for_film_on_date(cursor, film_id, date_str):
+    """Combine virtual template instances with any real showing rows that
+    aren't already accounted for by a template, so the cap can't be dodged
+    by relying on showings that haven't been materialized yet."""
+    day = dt.date.fromisoformat(date_str)
+    virtual = generate_showing_instances(cursor, start=day, days_ahead=0, film_id=film_id)
+    count = sum(1 for instance in virtual if instance.datetime[:10] == date_str)
+
+    cursor.execute("SELECT screenid, datetime FROM showing WHERE filmid = ? AND date(datetime) = ?",
+                   (film_id, date_str))
+    for screen_id, showing_datetime in cursor.fetchall():
+        time_str = showing_datetime[11:]
+        if find_template_film_for_instance(cursor, screen_id, date_str, time_str) != film_id:
+            count += 1
+    return count
+
+
 def check_csrf():
     token = request.form.get("csrf_token")
     if not token or token != session.get("csrf_token"):
@@ -218,6 +270,15 @@ def require_login():
     if "email" not in session:
         issue_csrf_token()
         return render_template("login.html")
+    return None
+
+
+def require_admin():
+    resp = require_login()
+    if resp:
+        return resp
+    if not session.get("is_admin"):
+        abort(403)
     return None
 
 
@@ -341,6 +402,7 @@ def create():
             message = "That email already has an account"
             return render_template("signup.html", message=message)
         session["email"] = email
+        session["is_admin"] = False
         return redirect("/")
 
 
@@ -355,10 +417,11 @@ def login_attempt():
     check_login_rate_limit(rate_limit_key)
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT passwordhash FROM user WHERE email = ?", (email,))
+        cursor.execute("SELECT passwordhash, isadmin FROM user WHERE email = ?", (email,))
         user_account = cursor.fetchone()
         if user_account is not None and check_password_hash(user_account[0], password):
             session["email"] = email
+            session["is_admin"] = bool(user_account[1])
             return redirect("/")
         record_login_failure(rate_limit_key)
         issue_csrf_token()
@@ -376,6 +439,7 @@ def login():
 @app.route("/logout")
 def logout():
     session.pop("email", None)
+    session.pop("is_admin", None)
     return redirect("/")
 
 
@@ -577,6 +641,166 @@ def edit_confirm():
             conn.rollback()
             abort(409)
     return redirect("/account")
+
+
+@app.route("/admin")
+def admin_dashboard():
+    resp = require_admin()
+    if resp:
+        return resp
+    return render_template("admin.html")
+
+
+@app.route("/admin/films/new", methods=["GET", "POST"])
+def admin_new_film():
+    resp = require_admin()
+    if resp:
+        return resp
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT rating FROM ratingicon ORDER BY rating")
+        ratings = [row[0] for row in cursor.fetchall()]
+
+        if request.method != "POST":
+            issue_csrf_token()
+            return render_template("admin_film.html", ratings=ratings)
+
+        check_csrf()
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        releasedate = request.form.get("releasedate", "").strip()
+        rating = request.form.get("rating", "")
+        posterurl = request.form.get("posterurl", "").strip()
+        actors = request.form.get("actors", "").strip()
+        director = request.form.get("director", "").strip()
+
+        error = None
+        try:
+            duration = float(request.form.get("duration", ""))
+            if duration <= 0:
+                raise ValueError
+        except ValueError:
+            error = "Enter a valid runtime in minutes"
+        if error is None and not title:
+            error = "Title is required"
+        if error is None and rating not in ratings:
+            error = "Select a valid age rating"
+
+        if error:
+            issue_csrf_token()
+            return render_template("admin_film.html", ratings=ratings, error=error)
+
+        cursor.execute("""INSERT INTO film (title, description, duration, releasedate, rating, posterurl,
+            actors, director) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                       (title, description, duration, releasedate, rating, posterurl, actors, director))
+        conn.commit()
+    return redirect("/admin")
+
+
+@app.route("/admin/screens/new", methods=["GET", "POST"])
+def admin_new_screen():
+    resp = require_admin()
+    if resp:
+        return resp
+    if request.method != "POST":
+        issue_csrf_token()
+        return render_template("admin_screen.html")
+
+    check_csrf()
+    screenname = request.form.get("screenname", "").strip()
+    if not screenname:
+        issue_csrf_token()
+        return render_template("admin_screen.html", error="Screen name is required")
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO screen (screenname) VALUES (?)", (screenname,))
+        screen_id = cursor.lastrowid
+        cursor.executemany(
+            "INSERT INTO seat (screenid, rownum, seatnum) VALUES (?, ?, ?)",
+            [(screen_id, row, seat_num) for row in SCREEN_ROWS for seat_num in range(1, SEATS_PER_ROW + 1)],
+        )
+        conn.commit()
+    return redirect("/admin")
+
+
+@app.route("/admin/showings/new", methods=["GET", "POST"])
+def admin_new_showing():
+    resp = require_admin()
+    if resp:
+        return resp
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT filmid, title FROM film ORDER BY title")
+        films = cursor.fetchall()
+        cursor.execute("SELECT screenid, screenname FROM screen ORDER BY screenid")
+        screens = cursor.fetchall()
+
+        if request.method != "POST":
+            issue_csrf_token()
+            return render_template("admin_showing.html", films=films, screens=screens)
+
+        check_csrf()
+
+        def fail(message):
+            issue_csrf_token()
+            return render_template("admin_showing.html", films=films, screens=screens, error=message)
+
+        try:
+            film_id = int(request.form["film_id"])
+            screen_id = int(request.form["screen_id"])
+            start_date = dt.date.fromisoformat(request.form["start_date"])
+            end_date_raw = request.form.get("end_date", "").strip()
+            end_date = dt.date.fromisoformat(end_date_raw) if end_date_raw else start_date
+            time_str = request.form["time"]
+            dt.datetime.strptime(time_str, "%H:%M")
+            weekdays_selected = {int(w) for w in request.form.getlist("weekdays")} or {start_date.isoweekday()}
+            if not weekdays_selected <= set(range(1, 8)):
+                raise ValueError
+        except (KeyError, ValueError):
+            return fail("Enter a valid film, screen, date range, and time")
+
+        if end_date < start_date:
+            return fail("End date can't be before the start date")
+        if (end_date - start_date).days > MAX_TEMPLATE_RANGE_DAYS:
+            return fail(f"Showings can only repeat over a {MAX_TEMPLATE_RANGE_DAYS}-day window at most")
+
+        cursor.execute("SELECT title, duration FROM film WHERE filmid = ?", (film_id,))
+        film = cursor.fetchone()
+        cursor.execute("SELECT screenid FROM screen WHERE screenid = ?", (screen_id,))
+        screen = cursor.fetchone()
+        if film is None or screen is None:
+            return fail("Unknown film or screen")
+        title, duration = film
+
+        occurrence_dates = []
+        day = start_date
+        while day <= end_date:
+            if day.isoweekday() in weekdays_selected and not is_in_past(f"{day.isoformat()} {time_str}"):
+                occurrence_dates.append(day)
+            day += dt.timedelta(days=1)
+        if not occurrence_dates:
+            return fail("Showing time must be in the future")
+
+        for occurrence_date in occurrence_dates:
+            date_str = occurrence_date.isoformat()
+            new_start, new_end = showing_window(f"{date_str} {time_str}", duration)
+            existing = get_screen_showings_on_date(cursor, screen_id, date_str)
+            if has_overlap(new_start, new_end, existing):
+                return fail(f"That screen already has a showing overlapping this time on {date_str}")
+            if count_showings_for_film_on_date(cursor, film_id, date_str) >= MAX_SHOWINGS_PER_DAY_PER_FILM:
+                return fail(f"{title} already has {MAX_SHOWINGS_PER_DAY_PER_FILM} showings on {date_str}")
+
+        # Insert as a showingtemplate rather than raw showing rows: the
+        # index/film/search pages only ever render showings by expanding
+        # showingtemplate (see generate_showing_instances) — a raw showing
+        # row is invisible to them until someone visits its exact URL.
+        weekdays_str = ",".join(str(w) for w in sorted(weekdays_selected))
+        cursor.execute("""INSERT INTO showingtemplate (filmid, screenid, weekdays, showtime, start_date, end_date)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+                       (film_id, screen_id, weekdays_str, time_str, start_date.isoformat(), end_date.isoformat()))
+        conn.commit()
+    return redirect("/admin")
 
 
 if __name__ == '__main__':

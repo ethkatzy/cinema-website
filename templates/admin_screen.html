@@ -1,0 +1,36 @@
+<html lang="en">
+<head>
+    <title>Add a screen</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+</head>
+<body>
+{% include "_banner.html" %}
+
+<div class="login-box">
+    <div class="button">
+        <a href="/admin">
+            Back to admin
+        </a>
+    </div>
+
+    {% if error %}
+    <p style="color: red">
+        {{ error }}
+    </p>
+    {% endif %}
+    <p>New screens get the standard 10&times;15 seat layout (rows A&ndash;J, 15 seats each).</p>
+    <form action="/admin/screens/new" method="post">
+        <p>
+            Screen name: <br />
+            <label>
+                <input type="text" name="screenname" required />
+            </label>
+        </p>
+        <p><br></p>
+        <input type="submit" value="Add screen" />
+        <input type="hidden" value="{{ session.csrf_token }}" name="csrf_token" />
+    </form>
+</div>
+</body>
+</html>
