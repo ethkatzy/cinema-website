@@ -12,10 +12,13 @@ CREATE TABLE booking(
 CREATE TABLE bookingdetail(
     bookingdetailid INTEGER PRIMARY KEY AUTOINCREMENT,
     bookingid INTEGER,
+    showingid INTEGER NOT NULL,
     seatid INTEGER,
     FOREIGN KEY(bookingid) REFERENCES booking(bookingid),
+    FOREIGN KEY(showingid) REFERENCES showing(showingid),
     FOREIGN KEY(seatid) REFERENCES seat(seatid)
     );
+CREATE UNIQUE INDEX idx_bookingdetail_showing_seat ON bookingdetail(showingid, seatid);
 CREATE TABLE film (
     filmid INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,

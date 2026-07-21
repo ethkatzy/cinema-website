@@ -120,7 +120,8 @@ def create_booking_directly(db_path, userid, showingid, seatid, otherinfo=""):
         (userid, showingid, main.TICKET_PRICE, otherinfo),
     )
     bookingid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-    conn.execute("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)", (bookingid, seatid))
+    conn.execute("INSERT INTO bookingdetail (bookingid, showingid, seatid) VALUES (?, ?, ?)",
+                 (bookingid, showingid, seatid))
     conn.commit()
     conn.close()
     return bookingid

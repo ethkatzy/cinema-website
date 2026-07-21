@@ -393,9 +393,13 @@ def booking(date, time_, screen_slug):
         (?, ?, datetime('now'), ?, ?)""",
                        (userid, showing_id, TICKET_PRICE * len(selected_seat_ids), other_info))
         booking_id = cursor.lastrowid
-        cursor.executemany("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",
-                            [(booking_id, seat_id) for seat_id in selected_seat_ids])
-        conn.commit()
+        try:
+            cursor.executemany("INSERT INTO bookingdetail (bookingid, showingid, seatid) VALUES (?, ?, ?)",
+                                [(booking_id, showing_id, seat_id) for seat_id in selected_seat_ids])
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            abort(409)
     return redirect("/account")
 
 
@@ -527,9 +531,13 @@ def edit_confirm():
         cursor.execute("""UPDATE booking SET bookingtime = datetime('now'), totalprice = ?, otherinfo = ?
         WHERE bookingid = ?""", (TICKET_PRICE * len(selected_seat_ids), other_info, booking_id))
         cursor.execute("DELETE FROM bookingdetail WHERE bookingid = ?", (booking_id,))
-        cursor.executemany("INSERT INTO bookingdetail (bookingid, seatid) VALUES (?, ?)",
-                            [(booking_id, seat_id) for seat_id in selected_seat_ids])
-        conn.commit()
+        try:
+            cursor.executemany("INSERT INTO bookingdetail (bookingid, showingid, seatid) VALUES (?, ?, ?)",
+                                [(booking_id, showing_id, seat_id) for seat_id in selected_seat_ids])
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            abort(409)
     return redirect("/account")
 
 
