@@ -1,8 +1,9 @@
+import datetime as dt
 import os
 import re
 import secrets
 import time
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from pathlib import Path
 
 from flask import Flask, render_template, request, redirect, session, abort
@@ -21,6 +22,9 @@ app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
 DB_PATH = "CinemaDatabase.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 TICKET_PRICE = 8.99
+SHOWING_WINDOW_DAYS = 14
+
+ShowingInstance = namedtuple("ShowingInstance", ["filmid", "screenid", "datetime"])
 
 LOGIN_ATTEMPT_LIMIT = 5
 LOGIN_ATTEMPT_WINDOW_SECONDS = 300
@@ -56,19 +60,93 @@ def find_film_id_by_slug(cursor, slug):
     return None
 
 
-def resolve_showing_id(cursor, date, time_, screen_slug):
+def _expand_template(template, window_start, window_end):
+    _templateid, filmid, screenid, weekdays, showtime, start_date, end_date = template
+    allowed_weekdays = {int(w) for w in weekdays.split(",")}
+    hour, minute = (int(part) for part in showtime.split(":"))
+    range_start = max(window_start, dt.date.fromisoformat(start_date))
+    range_end = min(window_end, dt.date.fromisoformat(end_date))
+    now = dt.datetime.now()
+    day = range_start
+    while day <= range_end:
+        if day.isoweekday() in allowed_weekdays:
+            showing_dt = dt.datetime(day.year, day.month, day.day, hour, minute)
+            if showing_dt > now:
+                yield ShowingInstance(filmid, screenid, showing_dt.strftime("%Y-%m-%d %H:%M"))
+        day += dt.timedelta(days=1)
+
+
+def generate_showing_instances(cursor, start=None, days_ahead=SHOWING_WINDOW_DAYS, film_id=None):
+    """Compute virtual showing instances from showingtemplate rows for
+    [start, start+days_ahead]. Nothing is persisted; instances that have
+    already started are excluded."""
+    start = start or dt.date.today()
+    window_end = start + dt.timedelta(days=days_ahead)
+    if film_id is None:
+        cursor.execute("""SELECT templateid, filmid, screenid, weekdays, showtime, start_date, end_date
+            FROM showingtemplate""")
+    else:
+        cursor.execute("""SELECT templateid, filmid, screenid, weekdays, showtime, start_date, end_date
+            FROM showingtemplate WHERE filmid = ?""", (film_id,))
+    instances = []
+    for template in cursor.fetchall():
+        instances.extend(_expand_template(template, start, window_end))
+    instances.sort(key=lambda instance: instance.datetime)
+    return instances
+
+
+def is_in_past(showing_datetime):
+    return dt.datetime.strptime(showing_datetime, "%Y-%m-%d %H:%M") <= dt.datetime.now()
+
+
+def get_showing_datetime(cursor, showing_id):
+    cursor.execute("SELECT datetime FROM showing WHERE showingid = ?", (showing_id,))
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def find_template_film_for_instance(cursor, screen_id, date_str, time_str):
+    day = dt.date.fromisoformat(date_str)
+    cursor.execute("""SELECT filmid, weekdays, start_date, end_date FROM showingtemplate
+        WHERE screenid = ? AND showtime = ?""", (screen_id, time_str))
+    for film_id, weekdays, start_date, end_date in cursor.fetchall():
+        allowed_weekdays = {int(w) for w in weekdays.split(",")}
+        in_window = dt.date.fromisoformat(start_date) <= day <= dt.date.fromisoformat(end_date)
+        if day.isoweekday() in allowed_weekdays and in_window:
+            return film_id
+    return None
+
+
+def resolve_or_create_showing_id(cursor, date_, time_, screen_slug):
     if not screen_slug.startswith("screen-"):
         abort(404)
     try:
         screen_id = int(screen_slug.removeprefix("screen-"))
+        dt.date.fromisoformat(date_)
+        dt.datetime.strptime(time_, "%H:%M")
     except ValueError:
         abort(404)
+
+    showing_datetime = f"{date_} {time_}"
     cursor.execute("SELECT showingid FROM showing WHERE datetime = ? AND screenid = ?",
-                   (f"{date} {time_}", screen_id))
+                   (showing_datetime, screen_id))
     row = cursor.fetchone()
-    if row is None:
+    if row is not None:
+        return row[0]
+
+    film_id = find_template_film_for_instance(cursor, screen_id, date_, time_)
+    if film_id is None or is_in_past(showing_datetime):
         abort(404)
-    return row[0]
+
+    try:
+        cursor.execute("INSERT INTO showing (filmid, screenid, datetime) VALUES (?, ?, ?)",
+                       (film_id, screen_id, showing_datetime))
+        cursor.connection.commit()
+        return cursor.lastrowid
+    except sqlite3.IntegrityError:
+        cursor.execute("SELECT showingid FROM showing WHERE datetime = ? AND screenid = ?",
+                       (showing_datetime, screen_id))
+        return cursor.fetchone()[0]
 
 
 def check_csrf():
@@ -164,9 +242,7 @@ def index():
         cursor.execute("""SELECT f.filmid, f.title, f.description, r.icon, f.rating, f.posterurl FROM film f
                        JOIN ratingicon r ON f.rating = r.rating""")
         results = cursor.fetchall()
-        cursor.execute("SELECT showingid, filmid, screenid, datetime FROM showing WHERE date(datetime) = ?",
-                       ("2025-01-18",))
-        showings = cursor.fetchall()
+        showings = generate_showing_instances(cursor, start=dt.date.today(), days_ahead=0)
     return render_template("index.html", items=results, showings=showings)
 
 
@@ -181,14 +257,12 @@ def film_page(slug):
          f.actors, f.director, f.rating FROM film f JOIN ratingicon r ON r.rating = f.rating WHERE filmId = ?""",
                        (film_id,))
         film = cursor.fetchone()
-        cursor.execute("SELECT showingid, screenid, datetime FROM showing WHERE filmid = ?",
-                       (film_id,))
-        showings = cursor.fetchall()
         if not film:
             abort(404)
+        showings = generate_showing_instances(cursor, film_id=film_id)
         showings_by_date = {}
         for showing in showings:
-            date = showing[2][:10]
+            date = showing.datetime[:10]
             showings_by_date.setdefault(date, []).append(showing)
         runtime = int(film[2])
         return render_template("film.html", film=film, showings_by_date=showings_by_date,
@@ -270,9 +344,11 @@ def logout():
 def render_showing_page(showing_id, error=None):
     with get_db() as conn:
         cursor = conn.cursor()
+        details = get_showing_details(cursor, showing_id)
+        if is_in_past(details[0][1]):
+            abort(410)
         seats = get_seats_for_showing(cursor, showing_id)
         booked_seat_ids = get_booked_seat_ids(cursor, showing_id)
-        details = get_showing_details(cursor, showing_id)
         issue_csrf_token()
         context = {"seats": seats, "booked_seat_ids": booked_seat_ids, "details": details}
         if error is not None:
@@ -283,7 +359,7 @@ def render_showing_page(showing_id, error=None):
 @app.route("/showing/<date>/<time_>/<screen_slug>", methods=["POST", "GET"])
 def booking(date, time_, screen_slug):
     with get_db() as conn:
-        showing_id = resolve_showing_id(conn.cursor(), date, time_, screen_slug)
+        showing_id = resolve_or_create_showing_id(conn.cursor(), date, time_, screen_slug)
 
     if request.method != "POST":
         return render_showing_page(showing_id)
@@ -300,6 +376,8 @@ def booking(date, time_, screen_slug):
     with get_db() as conn:
         check_csrf()
         cursor = conn.cursor()
+        if is_in_past(get_showing_datetime(cursor, showing_id)):
+            abort(410)
         seats = get_seats_for_showing(cursor, showing_id)
         valid_seat_ids = {seat["seatid"] for seat in seats}
         booked_seat_ids = get_booked_seat_ids(cursor, showing_id)
@@ -364,36 +442,28 @@ def search():
     showings = []
     with get_db() as conn:
         cursor = conn.cursor()
+        cursor.execute("SELECT title, filmid FROM film")
+        films = cursor.fetchall()
+        film_titles_by_id = {filmid: title for title, filmid in films}
+        all_showings = generate_showing_instances(cursor)
+        days = [(day,) for day in sorted({showing.datetime[:10] for showing in all_showings})]
         if request.method == "POST":
             film = request.form["film"]
             day = request.form["day"]
             user_search = (film, day)
             if not (film == "All films") and not (day == "All days"):
-                cursor.execute("""SELECT f.title, s.datetime, s.screenid, s.showingid, f.filmid FROM showing s
-                JOIN film f ON f.filmid = s.filmid WHERE f.title = ? AND date(s.datetime) = ? ORDER BY s.datetime;""",
-                               [film, day])
-                showings = cursor.fetchall()
+                showings = [s for s in all_showings
+                            if film_titles_by_id.get(s.filmid) == film and s.datetime[:10] == day]
                 search_type = 1
             elif film == "All films" and not (day == "All days"):
-                cursor.execute("""SELECT f.title, s.datetime, s.screenid, s.showingid, f.filmid FROM showing s
-                JOIN film f ON f.filmid = s.filmid WHERE date(s.datetime) = ? ORDER BY s.datetime;""",
-                               [day])
-                showings = cursor.fetchall()
+                showings = [s for s in all_showings if s.datetime[:10] == day]
                 search_type = 2
             elif not (film == "All films") and day == "All days":
-                cursor.execute("""SELECT f.title, s.datetime, s.screenid, s.showingid, f.filmid FROM showing s
-                JOIN film f ON f.filmid = s.filmid WHERE f.title = ? ORDER BY s.datetime;""", [film])
-                showings = cursor.fetchall()
+                showings = [s for s in all_showings if film_titles_by_id.get(s.filmid) == film]
                 search_type = 3
             else:
-                cursor.execute("""SELECT f.title, s.datetime, s.screenid, s.showingid, f.filmid FROM showing s
-                JOIN film f ON f.filmid = s.filmid ORDER BY s.datetime;""")
-                showings = cursor.fetchall()
+                showings = list(all_showings)
                 search_type = 4
-        cursor.execute("SELECT title, filmid FROM film")
-        films = cursor.fetchall()
-        cursor.execute("SELECT DISTINCT date(datetime) FROM showing")
-        days = cursor.fetchall()
         if "email" in session:
             name = get_user_by_email(cursor, session["email"])[1]
         else:
@@ -410,6 +480,8 @@ def render_edit_page(error=None):
     with get_db() as conn:
         cursor = conn.cursor()
         _, showing_id = get_owned_booking(cursor, booking_id, session["email"])
+        if is_in_past(get_showing_datetime(cursor, showing_id)):
+            abort(410)
         seats = get_seats_for_showing(cursor, showing_id)
         booked_seat_ids = get_booked_seat_ids(cursor, showing_id)
         cursor.execute("SELECT seatid FROM bookingdetail WHERE bookingid = ?", (booking_id,))
@@ -442,6 +514,8 @@ def edit_confirm():
     with get_db() as conn:
         cursor = conn.cursor()
         _, showing_id = get_owned_booking(cursor, booking_id, session["email"])
+        if is_in_past(get_showing_datetime(cursor, showing_id)):
+            abort(410)
         seats = get_seats_for_showing(cursor, showing_id)
         valid_seat_ids = {seat["seatid"] for seat in seats}
         booked_seat_ids = get_booked_seat_ids(cursor, showing_id, exclude_booking_id=booking_id)

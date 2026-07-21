@@ -67,8 +67,8 @@
     <div class="showings-container">
         {% for showing in showings %}
         <div class="showing-button">
-            <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
-                <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
+            <a href="/showing/{{showing.datetime[:10]}}/{{showing.datetime[11:]}}/screen-{{showing.screenid}}">
+                <h4>{{showing.datetime[-5:]}} - Screen {{showing.screenid}}</h4>
             </a>
         </div>
         {% endfor %}
@@ -82,10 +82,10 @@
     </a>
     <div class="showings-container">
         {% for showing in showings %}
-        {% if film[1] == showing[4] %}
+        {% if film[1] == showing.filmid %}
         <div class="showing-button">
-            <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
-                <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
+            <a href="/showing/{{showing.datetime[:10]}}/{{showing.datetime[11:]}}/screen-{{showing.screenid}}">
+                <h4>{{showing.datetime[-5:]}} - Screen {{showing.screenid}}</h4>
             </a>
         </div>
         {% endif %}
@@ -99,10 +99,10 @@
     <h2>{{day[0]}}</h2>
     <div class="showings-container">
         {% for showing in showings %}
-        {% if day[0] == showing[1][:10] %}
+        {% if day[0] == showing.datetime[:10] %}
         <div class="showing-button">
-            <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
-                <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
+            <a href="/showing/{{showing.datetime[:10]}}/{{showing.datetime[11:]}}/screen-{{showing.screenid}}">
+                <h4>{{showing.datetime[-5:]}} - Screen {{showing.screenid}}</h4>
             </a>
         </div>
         {% endif %}
@@ -121,10 +121,10 @@
         <h3>{{day[0]}}</h3>
         <div class="showings-container">
             {% for showing in showings %}
-            {% if showing[4] == film[1] and showing[1][:10] == day[0] %}
+            {% if showing.filmid == film[1] and showing.datetime[:10] == day[0] %}
             <div class="showing-button">
-                <a href="/showing/{{showing[1][:10]}}/{{showing[1][11:]}}/screen-{{showing[2]}}">
-                        <h4>{{showing[1][-5:]}} - Screen {{showing[2]}}</h4>
+                <a href="/showing/{{showing.datetime[:10]}}/{{showing.datetime[11:]}}/screen-{{showing.screenid}}">
+                        <h4>{{showing.datetime[-5:]}} - Screen {{showing.screenid}}</h4>
                 </a>
             </div>
             {% endif %}

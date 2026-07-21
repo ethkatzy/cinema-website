@@ -1,3 +1,4 @@
+import datetime as dt
 import os
 import sqlite3
 import sys
@@ -75,6 +76,32 @@ def csrf_token_from_get(client, path):
     client.get(path)
     with client.session_transaction() as sess:
         return sess["csrf_token"]
+
+
+@pytest.fixture()
+def seeded_showing(db_path):
+    """Two showing rows dated 'tomorrow' relative to whenever the suite runs,
+    on screens 10 and 11 (no showingtemplate targets those screens), so tests
+    can drive bookings through the real HTTP routes regardless of the date."""
+    showing_date = (dt.datetime.now() + dt.timedelta(days=1)).strftime("%Y-%m-%d")
+    conn = sqlite3.connect(db_path)
+    conn.execute("INSERT INTO showing (filmid, screenid, datetime) VALUES (1, 10, ?)",
+                 (f"{showing_date} 14:05",))
+    conn.execute("INSERT INTO showing (filmid, screenid, datetime) VALUES (1, 11, ?)",
+                 (f"{showing_date} 14:50",))
+    conn.commit()
+    showing_id = conn.execute(
+        "SELECT showingid FROM showing WHERE screenid = 10 AND datetime = ?", (f"{showing_date} 14:05",)
+    ).fetchone()[0]
+    other_screen_showing_id = conn.execute(
+        "SELECT showingid FROM showing WHERE screenid = 11 AND datetime = ?", (f"{showing_date} 14:50",)
+    ).fetchone()[0]
+    conn.close()
+    return {
+        "showing_id": showing_id,
+        "other_screen_showing_id": other_screen_showing_id,
+        "url": f"/showing/{showing_date}/14:05/screen-10",
+    }
 
 
 def get_seat_ids(db_path, showing_id, limit=2):

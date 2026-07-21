@@ -28,13 +28,13 @@ CREATE TABLE film (
     director TEXT
     );
 INSERT INTO "film" VALUES(1,'Mufasa: The Lion King','Simba, having become king of the Pride Lands, is determined for his cub to follow in his footsteps while the origins of his late father Mufasa are explored.',118.0,'20th Dec 2024','PG','https://upload.wikimedia.org/wikipedia/en/0/0b/Mufasa_The_Lion_King_Movie_2024.jpeg','Aaron Pierre, Kelvin Harrison Jr., Seth Rogen, Billy Eichner, John Kani','Barry Jenkins');
-INSERT INTO "film" VALUES(2,'A Complete Unknown','Set in the influential New York music scene of the early 60s, A COMPLETE UNKNOWN follows 19-year-old Minnesota musician BOB DYLAN’s meteoric rise as a folk singer.',140.0,'17th Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/d/d5/A_Complete_Unknown_poster.jpg','Timothée Chalamet, Elle Fanning, Scoot McNairy, Dan Fogler, Boyd Holbrook, Edward Norton, Norbert Leo Butz, Monica Barbaro','James Mangold');
-INSERT INTO "film" VALUES(3,'Nosferatu','Robert Eggers’ Nosferatu is a gothic tale of obsession between a haunted young woman and the terrifying vampire infatuated with her, causing untold horror in its wake.',132.0,'1st Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/4/48/Nosferatu_IMAX_poster_2024.jpg','Emma Corrin, Aaron Taylor-Johnson, Bill Skarsgård, Nicholas Hoult, Willem Dafoe','Robert Eggers');
+INSERT INTO "film" VALUES(2,'A Complete Unknown','Set in the influential New York music scene of the early 60s, A COMPLETE UNKNOWN follows 19-year-old Minnesota musician BOB DYLANs meteoric rise as a folk singer.',140.0,'17th Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/d/d5/A_Complete_Unknown_poster.jpg','Timothï¿½e Chalamet, Elle Fanning, Scoot McNairy, Dan Fogler, Boyd Holbrook, Edward Norton, Norbert Leo Butz, Monica Barbaro','James Mangold');
+INSERT INTO "film" VALUES(3,'Nosferatu','Robert Eggers Nosferatu is a gothic tale of obsession between a haunted young woman and the terrifying vampire infatuated with her, causing untold horror in its wake.',132.0,'1st Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/4/48/Nosferatu_IMAX_poster_2024.jpg','Emma Corrin, Aaron Taylor-Johnson, Bill Skarsgï¿½rd, Nicholas Hoult, Willem Dafoe','Robert Eggers');
 INSERT INTO "film" VALUES(4,'Sonic the Hedgehog 3','Sonic, Knuckles, and Tails reunite against a powerful new adversary, Shadow, a mysterious villain with powers unlike anything they have faced before.',110.0,'21st Dec 2024','PG','https://upload.wikimedia.org/wikipedia/en/f/f2/Sonic_the_Hedgehog_3_film_poster.jpg','Ben Schwartz, Colleen O''Shaughnessey, Idris Elba, Keanu Reeves, Jim Carrey','Jeff Fowler');
-INSERT INTO "film" VALUES(5,'We Live in Time','An up-and-coming chef and a recent divorcée find their lives forever changed when a chance encounter brings them together, in a decade-spanning, deeply moving romance.',107.0,'1st Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/3/32/We_live_in_time_poster.jpg','Andrew Garfield, Florence Pugh, Marama Corlett, Adam James','John Crowley');
+INSERT INTO "film" VALUES(5,'We Live in Time','An up-and-coming chef and a recent divorce find their lives forever changed when a chance encounter brings them together, in a decade-spanning, deeply moving romance.',107.0,'1st Jan 2025','15','https://upload.wikimedia.org/wikipedia/en/3/32/We_live_in_time_poster.jpg','Andrew Garfield, Florence Pugh, Marama Corlett, Adam James','John Crowley');
 INSERT INTO "film" VALUES(6,'Moana 2','After receiving an unexpected call from her wayfinding ancestors, Moana must journey to the far seas of Oceania and into dangerous, long-lost waters for an adventure.',100.0,'29th Nov 2024','PG','https://upload.wikimedia.org/wikipedia/en/7/73/Moana_2_poster.jpg','Auli''i Cravalho, Dwayne Johnson, Alan Tudyk','Dave Derrick Jr.');
 INSERT INTO "film" VALUES(7,'Babygirl','Despite the risk and prejudices, a very successful CEO begins an illicit affair with her much younger intern.',115.0,'10th Jan 2025','18','https://upload.wikimedia.org/wikipedia/en/0/0c/Babygirl_%28film_poster%29.png','Nicole Kidman, Antonio Banderas, Jean Reno, Harris Dickinson, Sophie Wilde, Anoop Desai','Halina Reijn');
-INSERT INTO "film" VALUES(8,'Better Man','Better Man looks at the rise, fall and resurrection of Robbie Williams – one of the UK’s bestselling artists of all time.',135.0,'26th Dec 2024','15','https://upload.wikimedia.org/wikipedia/en/a/a3/Better_Man_film_poster.jpg','Damon Herriman, Alison Steadman, Anthony Hayes, Steve Pemberton, Kate Mulvany, Robbie Williams, Jonno Davies, Raechelle Banno','Michael Gracey');
+INSERT INTO "film" VALUES(8,'Better Man','Better Man looks at the rise, fall and resurrection of Robbie Williams - one of the UKs bestselling artists of all time.',135.0,'26th Dec 2024','15','https://upload.wikimedia.org/wikipedia/en/a/a3/Better_Man_film_poster.jpg','Damon Herriman, Alison Steadman, Anthony Hayes, Steve Pemberton, Kate Mulvany, Robbie Williams, Jonno Davies, Raechelle Banno','Michael Gracey');
 INSERT INTO "film" VALUES(9,'Wicked','Wicked, the untold story of the witches of Oz, stars Cynthia Erivo as Elphaba, a young woman misunderstood because of her unusual green skin.',160.0,'22nd Nov 2024','PG','https://upload.wikimedia.org/wikipedia/en/3/3c/Wicked_%282024_film%29_poster.png','Peter Dinklage, Jeff Goldblum, Michelle Yeoh, Cynthia Erivo, Keala Settle, Ariana Grande, Bowen Yang, Marissa Bode, Jonathan Bailey, Bronwyn James, Ethan Slater','Jon M. Chu');
 CREATE TABLE ratingicon (rating TEXT, icon TEXT);
 INSERT INTO "ratingicon" VALUES('U','https://upload.wikimedia.org/wikipedia/commons/b/b3/BBFC_U_2019.svg');
@@ -1722,6 +1722,7 @@ CREATE TABLE showing(
     FOREIGN KEY(screenid) REFERENCES screen(screenid),
     FOREIGN KEY(filmid) REFERENCES film(filmid)
     );
+CREATE UNIQUE INDEX idx_showing_slot ON showing(screenid, datetime);
 INSERT INTO "showing" VALUES(1,1,2,'2025-01-18 14:05');
 INSERT INTO "showing" VALUES(2,1,11,'2025-01-18 14:50');
 INSERT INTO "showing" VALUES(3,1,8,'2025-01-18 16:00');
@@ -1879,6 +1880,53 @@ INSERT INTO "showing" VALUES(156,9,1,'2025-01-23 11:50');
 INSERT INTO "showing" VALUES(157,9,3,'2025-01-23 13:45');
 INSERT INTO "showing" VALUES(158,9,8,'2025-01-23 16:45');
 INSERT INTO "showing" VALUES(159,9,6,'2025-01-23 19:35');
+CREATE TABLE showingtemplate(
+    templateid INTEGER PRIMARY KEY AUTOINCREMENT,
+    filmid INTEGER NOT NULL,
+    screenid INTEGER NOT NULL,
+    weekdays TEXT NOT NULL,
+    showtime TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    FOREIGN KEY(filmid) REFERENCES film(filmid),
+    FOREIGN KEY(screenid) REFERENCES screen(screenid)
+    );
+INSERT INTO "showingtemplate" VALUES(1,1,1,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(2,1,1,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(3,1,1,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(4,1,1,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(5,2,2,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(6,2,2,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(7,2,2,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(8,2,2,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(9,3,3,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(10,3,3,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(11,3,3,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(12,3,3,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(13,4,4,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(14,4,4,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(15,4,4,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(16,4,4,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(17,5,5,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(18,5,5,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(19,5,5,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(20,5,5,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(21,6,6,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(22,6,6,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(23,6,6,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(24,6,6,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(25,7,7,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(26,7,7,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(27,7,7,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(28,7,7,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(29,8,8,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(30,8,8,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(31,8,8,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(32,8,8,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(33,9,9,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(34,9,9,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(35,9,9,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
+INSERT INTO "showingtemplate" VALUES(36,9,9,'1,2,3,4,5,6,7','21:00','2024-01-01','2030-12-31');
 CREATE TABLE user(
     userid INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT,
@@ -1890,6 +1938,7 @@ INSERT INTO "sqlite_sequence" VALUES('film',81);
 INSERT INTO "sqlite_sequence" VALUES('screen',11);
 INSERT INTO "sqlite_sequence" VALUES('seat',1650);
 INSERT INTO "sqlite_sequence" VALUES('showing',159);
+INSERT INTO "sqlite_sequence" VALUES('showingtemplate',36);
 INSERT INTO "sqlite_sequence" VALUES('user',2);
 INSERT INTO "sqlite_sequence" VALUES('booking',22);
 INSERT INTO "sqlite_sequence" VALUES('bookingdetail',50);

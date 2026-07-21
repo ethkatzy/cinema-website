@@ -55,9 +55,9 @@
         <p>{{item[2]}}</p>
         <div class="showings">
             {% for showing in showings %}
-            {% if showing[1] == item[0] %}
-            <a href="/showing/{{showing[3][:10]}}/{{showing[3][11:]}}/screen-{{showing[2]}}" class="showing-button">
-                Screen {{showing[2]}} - {{showing[3][-5:]}}
+            {% if showing.filmid == item[0] %}
+            <a href="/showing/{{showing.datetime[:10]}}/{{showing.datetime[11:]}}/screen-{{showing.screenid}}" class="showing-button">
+                Screen {{showing.screenid}} - {{showing.datetime[-5:]}}
             </a>
             {% endif %}
             {% endfor %}

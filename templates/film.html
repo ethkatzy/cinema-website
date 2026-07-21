@@ -59,8 +59,8 @@
     <div class="showings-container">
     {% for showing in showings_for_date %}
     <div class="showing-button">
-        <a href="/showing/{{showing[2][:10]}}/{{showing[2][11:]}}/screen-{{showing[1]}}">
-            <p>Screen {{showing[1]}} - {{showing[2][11:]}}</p>
+        <a href="/showing/{{showing.datetime[:10]}}/{{showing.datetime[11:]}}/screen-{{showing.screenid}}">
+            <p>Screen {{showing.screenid}} - {{showing.datetime[11:]}}</p>
         </a>
     </div>
     {% endfor %}
