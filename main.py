@@ -8,6 +8,7 @@ from pathlib import Path
 
 from flask import Flask, render_template, request, redirect, session, abort
 import sqlite3
+from werkzeug.exceptions import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
 import config
 
@@ -181,6 +182,27 @@ def set_security_headers(response):
     if IS_PRODUCTION:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
+
+ERROR_INFO = {
+    400: ("Bad request", "That request doesn't look right."),
+    403: ("Forbidden", "You don't have permission to do that."),
+    404: ("Page not found", "We couldn't find the page you were looking for."),
+    409: ("Seat no longer available", "One of those seats was just booked by someone else — pick another."),
+    410: ("Showing no longer available", "This showing has already taken place."),
+    429: ("Too many requests", "Too many login attempts — please wait a few minutes and try again."),
+    500: ("Something went wrong", "An unexpected error occurred on our end. Please try again."),
+}
+
+
+def handle_error(error):
+    code = error.code if isinstance(error, HTTPException) else 500
+    title, message = ERROR_INFO.get(code, ("Error", "Something went wrong."))
+    return render_template("error.html", code=code, title=title, message=message), code
+
+
+for _status_code in ERROR_INFO:
+    app.register_error_handler(_status_code, handle_error)
 
 
 def issue_csrf_token():

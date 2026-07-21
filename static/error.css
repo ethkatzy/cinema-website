@@ -1,0 +1,101 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.nav-button {
+    display: inline-block;
+    padding: 10px;
+    border-radius: 15px;
+    text-decoration: none;
+    color: #3c3c3c;
+    background-color: #d7d7d7;
+    height: 25px;
+    width: 120px;
+    font-family: sans-serif;
+    text-align: center;
+    line-height: 25px;
+    margin: 10px 10px 0 10px;
+}
+
+.nav-button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.nav-button:hover {
+    background-color: #bbb;
+}
+
+.search-icon {
+    height: 35px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -13px;
+    margin-left: 10px;
+}
+
+.home-icon {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    cursor: pointer;
+    margin-bottom: -15.5px;
+    margin-left: 20px;
+}
+
+.error-box {
+    background-color: #444;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    max-width: 420px;
+    margin: 100px auto;
+    padding: 40px 30px;
+    text-align: center;
+}
+
+.error-code {
+    font-size: 72px;
+    font-weight: bold;
+    margin: 0;
+    color: #d7d7d7;
+}
+
+.error-box h1 {
+    margin: 10px 0;
+    font-size: 24px;
+}
+
+.error-box p:not(.error-code) {
+    color: #ccc;
+    margin: 10px 0 25px;
+}
+
+.error-box .button {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 15px;
+    color: #3c3c3c;
+    background-color: #d7d7d7;
+    font-family: sans-serif;
+}
+
+.error-box .button:hover {
+    background-color: #bbb;
+}
+
+.error-box .button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}

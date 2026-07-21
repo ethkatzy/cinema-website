@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ code }} - {{ title }}</title>
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+    <link rel="stylesheet" href="{{ url_for('static', filename='error.css') }}">
+</head>
+<body>
+{% set nav_button_class = "nav-button" %}
+{% include "_banner.html" %}
+<div class="error-box">
+    <p class="error-code">{{ code }}</p>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <div class="button"><a href="/">Back to home</a></div>
+</div>
+</body>
+</html>
