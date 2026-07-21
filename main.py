@@ -39,7 +39,9 @@ def init_db_if_needed():
 
 
 def get_db():
-    return sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
 
 
 init_db_if_needed()

@@ -51,3 +51,7 @@ The repo includes a `render.yaml` blueprint, so Render can build and run the app
 4. On first boot, `main.py` creates `CinemaDatabase.db` from `schema.sql` if it doesn't already exist (the `.db` file itself is gitignored, so it's never committed).
 
 Note: Render's free tier disk is ephemeral, so `CinemaDatabase.db` — and anything written to it (signups, bookings) — resets to the `schema.sql` seed data on every redeploy. That's fine for a demo/portfolio link; it isn't a durable production database.
+
+## Known limitations
+* Runs via Flask's dev server for this demo; a production deployment would put gunicorn behind nginx.
+* SQLite serializes writes (only one writer at a time), so it has a hard concurrency ceiling and isn't suited to high-concurrency production traffic. WAL mode (`PRAGMA journal_mode=WAL`, set in `get_db()`) lets readers proceed alongside a writer, but it doesn't remove the single-writer limit.

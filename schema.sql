@@ -9,6 +9,8 @@ CREATE TABLE booking(
     FOREIGN KEY(userid) REFERENCES user(userid),
     FOREIGN KEY(showingid) REFERENCES showing(showingid)
     );
+CREATE INDEX idx_booking_userid ON booking(userid);
+CREATE INDEX idx_booking_showingid ON booking(showingid);
 CREATE TABLE bookingdetail(
     bookingdetailid INTEGER PRIMARY KEY AUTOINCREMENT,
     bookingid INTEGER,
@@ -19,6 +21,8 @@ CREATE TABLE bookingdetail(
     FOREIGN KEY(seatid) REFERENCES seat(seatid)
     );
 CREATE UNIQUE INDEX idx_bookingdetail_showing_seat ON bookingdetail(showingid, seatid);
+CREATE INDEX idx_bookingdetail_bookingid ON bookingdetail(bookingid);
+CREATE INDEX idx_bookingdetail_seatid ON bookingdetail(seatid);
 CREATE TABLE film (
     filmid INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
@@ -67,6 +71,7 @@ CREATE TABLE seat(
     seatnum INTEGER,
     FOREIGN KEY(screenid) REFERENCES screen(screenid)
     );
+CREATE INDEX idx_seat_screenid ON seat(screenid);
 INSERT INTO "seat" VALUES(1,1,'A',1);
 INSERT INTO "seat" VALUES(2,1,'A',2);
 INSERT INTO "seat" VALUES(3,1,'A',3);
@@ -1726,6 +1731,7 @@ CREATE TABLE showing(
     FOREIGN KEY(filmid) REFERENCES film(filmid)
     );
 CREATE UNIQUE INDEX idx_showing_slot ON showing(screenid, datetime);
+CREATE INDEX idx_showing_filmid ON showing(filmid);
 INSERT INTO "showing" VALUES(1,1,2,'2025-01-18 14:05');
 INSERT INTO "showing" VALUES(2,1,11,'2025-01-18 14:50');
 INSERT INTO "showing" VALUES(3,1,8,'2025-01-18 16:00');
@@ -1894,6 +1900,8 @@ CREATE TABLE showingtemplate(
     FOREIGN KEY(filmid) REFERENCES film(filmid),
     FOREIGN KEY(screenid) REFERENCES screen(screenid)
     );
+CREATE INDEX idx_showingtemplate_filmid ON showingtemplate(filmid);
+CREATE INDEX idx_showingtemplate_screenid ON showingtemplate(screenid);
 INSERT INTO "showingtemplate" VALUES(1,1,1,'1,2,3,4,5,6,7','12:00','2024-01-01','2030-12-31');
 INSERT INTO "showingtemplate" VALUES(2,1,1,'1,2,3,4,5,6,7','15:00','2024-01-01','2030-12-31');
 INSERT INTO "showingtemplate" VALUES(3,1,1,'1,2,3,4,5,6,7','18:00','2024-01-01','2030-12-31');
