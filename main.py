@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 import os
 import re
 import secrets
@@ -22,12 +23,14 @@ app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
 
 DB_PATH = "CinemaDatabase.db"
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
-TICKET_PRICE = 8.99
 SHOWING_WINDOW_DAYS = 14
 MAX_SHOWINGS_PER_DAY_PER_FILM = 4
 MAX_TEMPLATE_RANGE_DAYS = 90
-SCREEN_ROWS = "ABCDEFGHIJ"
-SEATS_PER_ROW = 15
+SEAT_TYPE_PRICES = {"Saver": 6.0, "Regular": 8.0, "VIP": 10.0}
+MAX_SCREEN_ROWS = 26
+MAX_SCREEN_COLS = 40
+MAX_SEATS_PER_SCREEN = 1000
+ROW_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 ShowingInstance = namedtuple("ShowingInstance", ["filmid", "screenid", "datetime"])
 
@@ -59,6 +62,7 @@ def slugify(text):
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PHONE_PATTERN = re.compile(r"^\+?[0-9]{7,15}$")
 PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
+ROW_PATTERN = re.compile(r"^[A-Z]$")
 
 
 app.jinja_env.filters["slugify"] = slugify
@@ -298,9 +302,23 @@ def get_owned_booking(cursor, booking_id, email):
 
 
 def get_seats_for_showing(cursor, showing_id):
-    cursor.execute("""SELECT seatid, rownum, seatnum FROM seat WHERE screenid =
-        (SELECT screenid FROM showing WHERE showingid = ?)""", (showing_id,))
-    return [{"seatid": row[0], "rownum": row[1], "seatnum": row[2]} for row in cursor.fetchall()]
+    cursor.execute("""SELECT seatid, rownum, seatnum, seattype FROM seat WHERE screenid =
+        (SELECT screenid FROM showing WHERE showingid = ?) ORDER BY rownum, seatnum""", (showing_id,))
+    return [{"seatid": row[0], "rownum": row[1], "seatnum": row[2], "seattype": row[3]}
+            for row in cursor.fetchall()]
+
+
+def build_seat_grid(seats):
+    """Annotate seats with 1-based grid_row/grid_col so irregular per-screen
+    layouts (missing rows, gaps within a row) render as blank grid cells
+    instead of needing placeholder markup for positions that don't exist."""
+    rows = sorted({seat["rownum"] for seat in seats})
+    row_index = {row: index for index, row in enumerate(rows)}
+    max_col = max((seat["seatnum"] for seat in seats), default=0)
+    for seat in seats:
+        seat["grid_row"] = row_index[seat["rownum"]] + 2
+        seat["grid_col"] = seat["seatnum"] + 1
+    return {"seats": seats, "rows": rows, "max_col": max_col}
 
 
 def get_booked_seat_ids(cursor, showing_id, exclude_booking_id=None):
@@ -323,6 +341,41 @@ def get_showing_details(cursor, showing_id):
 def validate_seat_selection(selected_seat_ids, valid_seat_ids, booked_seat_ids):
     if not selected_seat_ids <= valid_seat_ids or selected_seat_ids & booked_seat_ids:
         abort(409)
+
+
+def total_price_for_seats(seats, selected_seat_ids):
+    seat_types = {seat["seatid"]: seat["seattype"] for seat in seats}
+    return sum(SEAT_TYPE_PRICES[seat_types[seat_id]] for seat_id in selected_seat_ids)
+
+
+def parse_seat_layout(raw_json):
+    """Parse and validate the wizard's [{row, col, type}, ...] JSON payload.
+    Raises ValueError on anything malformed so the caller can fail closed
+    before inserting a screen row."""
+    try:
+        layout = json.loads(raw_json)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Malformed seat layout") from exc
+    if not isinstance(layout, list) or not layout or len(layout) > MAX_SEATS_PER_SCREEN:
+        raise ValueError("Malformed seat layout")
+
+    seen_positions = set()
+    seats = []
+    for entry in layout:
+        if not isinstance(entry, dict) or set(entry) != {"row", "col", "type"}:
+            raise ValueError("Malformed seat layout")
+        row, col, seat_type = entry["row"], entry["col"], entry["type"]
+        if not isinstance(row, str) or not ROW_PATTERN.match(row):
+            raise ValueError("Malformed seat layout")
+        if not isinstance(col, int) or isinstance(col, bool) or not (1 <= col <= MAX_SCREEN_COLS):
+            raise ValueError("Malformed seat layout")
+        if seat_type not in SEAT_TYPE_PRICES:
+            raise ValueError("Malformed seat layout")
+        if (row, col) in seen_positions:
+            raise ValueError("Malformed seat layout")
+        seen_positions.add((row, col))
+        seats.append((row, col, seat_type))
+    return seats
 
 
 @app.route('/')
@@ -452,7 +505,8 @@ def render_showing_page(showing_id, error=None):
         seats = get_seats_for_showing(cursor, showing_id)
         booked_seat_ids = get_booked_seat_ids(cursor, showing_id)
         issue_csrf_token()
-        context = {"seats": seats, "booked_seat_ids": booked_seat_ids, "details": details}
+        context = {**build_seat_grid(seats), "booked_seat_ids": booked_seat_ids, "details": details,
+                   "seat_type_prices": SEAT_TYPE_PRICES}
         if error is not None:
             context["error"] = error
         return render_template("showing.html", **context)
@@ -493,7 +547,7 @@ def booking(date, time_, screen_slug):
         other_info = request.form.getlist("other-info")[0]
         cursor.execute("""INSERT INTO booking (userid, showingid, bookingtime, totalprice, otherinfo) VALUES
         (?, ?, datetime('now'), ?, ?)""",
-                       (userid, showing_id, TICKET_PRICE * len(selected_seat_ids), other_info))
+                       (userid, showing_id, total_price_for_seats(seats, selected_seat_ids), other_info))
         booking_id = cursor.lastrowid
         try:
             cursor.executemany("INSERT INTO bookingdetail (bookingid, showingid, seatid) VALUES (?, ?, ?)",
@@ -594,8 +648,9 @@ def render_edit_page(error=None):
         user_seats = {row[0] for row in cursor.fetchall()}
         details = get_showing_details(cursor, showing_id)
         issue_csrf_token()
-        return render_template("edit.html", seats=seats, booked_seat_ids=booked_seat_ids,
-                               user_seats=user_seats, error=error, booking_id=booking_id, details=details)
+        return render_template("edit.html", **build_seat_grid(seats), booked_seat_ids=booked_seat_ids,
+                               user_seats=user_seats, error=error, booking_id=booking_id, details=details,
+                               seat_type_prices=SEAT_TYPE_PRICES)
 
 
 @app.route("/edit", methods=["POST"])
@@ -631,7 +686,7 @@ def edit_confirm():
             abort(400)
         validate_seat_selection(selected_seat_ids, valid_seat_ids, booked_seat_ids)
         cursor.execute("""UPDATE booking SET bookingtime = datetime('now'), totalprice = ?, otherinfo = ?
-        WHERE bookingid = ?""", (TICKET_PRICE * len(selected_seat_ids), other_info, booking_id))
+        WHERE bookingid = ?""", (total_price_for_seats(seats, selected_seat_ids), other_info, booking_id))
         cursor.execute("DELETE FROM bookingdetail WHERE bookingid = ?", (booking_id,))
         try:
             cursor.executemany("INSERT INTO bookingdetail (bookingid, showingid, seatid) VALUES (?, ?, ?)",
@@ -702,23 +757,36 @@ def admin_new_screen():
     resp = require_admin()
     if resp:
         return resp
+
+    wizard_context = {"seat_type_prices": SEAT_TYPE_PRICES, "max_rows": MAX_SCREEN_ROWS,
+                      "max_cols": MAX_SCREEN_COLS}
+
     if request.method != "POST":
         issue_csrf_token()
-        return render_template("admin_screen.html")
+        return render_template("admin_screen.html", **wizard_context)
 
     check_csrf()
+
+    def fail(message):
+        issue_csrf_token()
+        return render_template("admin_screen.html", error=message, **wizard_context)
+
     screenname = request.form.get("screenname", "").strip()
     if not screenname:
-        issue_csrf_token()
-        return render_template("admin_screen.html", error="Screen name is required")
+        return fail("Screen name is required")
+
+    try:
+        seats = parse_seat_layout(request.form.get("layout_json", ""))
+    except ValueError:
+        return fail("Generate a layout and assign every seat a valid type before submitting")
 
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("INSERT INTO screen (screenname) VALUES (?)", (screenname,))
         screen_id = cursor.lastrowid
         cursor.executemany(
-            "INSERT INTO seat (screenid, rownum, seatnum) VALUES (?, ?, ?)",
-            [(screen_id, row, seat_num) for row in SCREEN_ROWS for seat_num in range(1, SEATS_PER_ROW + 1)],
+            "INSERT INTO seat (screenid, rownum, seatnum, seattype) VALUES (?, ?, ?, ?)",
+            [(screen_id, row, col, seat_type) for row, col, seat_type in seats],
         )
         conn.commit()
     return redirect("/admin")

@@ -77,7 +77,6 @@ a {
 
 .seat-grid {
     display: grid;
-    grid-template-columns: repeat(16, auto);
     gap: 5px;
     justify-content: center;
 }
@@ -91,6 +90,18 @@ a {
     cursor: pointer;
     transition: background-color 0.3s;
     background-color: green;
+}
+
+.seat-saver {
+    background-color: #2f7bd6;
+}
+
+.seat-regular {
+    background-color: #2e8b3d;
+}
+
+.seat-vip {
+    background-color: #c99a1e;
 }
 
 .seat.selected {
@@ -110,6 +121,29 @@ a {
 
 .booked:hover {
     cursor: not-allowed;
+}
+
+.seat-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 1px solid black;
+    border-radius: 3px;
 }
 
 .row-label, .seat-label {

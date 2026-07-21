@@ -114,12 +114,14 @@ def get_seat_ids(db_path, showing_id, limit=2):
     return [seat["seatid"] for seat in seats[:limit]]
 
 
-def create_booking_directly(db_path, userid, showingid, seatid, otherinfo=""):
+def create_booking_directly(db_path, userid, showingid, seatid, otherinfo="", price=None):
+    if price is None:
+        price = main.SEAT_TYPE_PRICES["Regular"]
     conn = sqlite3.connect(db_path)
     conn.execute(
         """INSERT INTO booking (userid, showingid, bookingtime, totalprice, otherinfo)
         VALUES (?, ?, datetime('now'), ?, ?)""",
-        (userid, showingid, main.TICKET_PRICE, otherinfo),
+        (userid, showingid, price, otherinfo),
     )
     bookingid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.execute("INSERT INTO bookingdetail (bookingid, showingid, seatid) VALUES (?, ?, ?)",

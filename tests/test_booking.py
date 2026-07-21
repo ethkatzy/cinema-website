@@ -1,5 +1,6 @@
 import sqlite3
 
+import main
 from conftest import create_booking_directly, get_seat_ids, login_session
 
 
@@ -73,9 +74,33 @@ def test_booking_creates_booking_for_logged_in_user(client, db_path, make_user, 
     conn.close()
 
     assert booking[1] == user["userid"]
-    assert booking[2] == 8.99 * 2
+    assert booking[2] == main.SEAT_TYPE_PRICES["Regular"] * 2
     assert booking[3] == "wheelchair access"
     assert seats_booked == set(seat_ids)
+
+
+def test_booking_totalprice_sums_mixed_seat_types(client, db_path, make_user, seeded_showing):
+    user = make_user(email="mixedtypes@example.com")
+    token = login_session(client, user["email"])
+    seat_ids = get_seat_ids(db_path, seeded_showing["showing_id"], limit=2)
+
+    conn = sqlite3.connect(db_path)
+    conn.execute("UPDATE seat SET seattype = 'Saver' WHERE seatid = ?", (seat_ids[0],))
+    conn.execute("UPDATE seat SET seattype = 'VIP' WHERE seatid = ?", (seat_ids[1],))
+    conn.commit()
+    conn.close()
+
+    resp = client.post(seeded_showing["url"], data={
+        "seats": [str(s) for s in seat_ids],
+        "other-info": "",
+        "csrf_token": token,
+    })
+    assert resp.status_code == 302
+
+    conn = sqlite3.connect(db_path)
+    totalprice = conn.execute("SELECT totalprice FROM booking WHERE userid = ?", (user["userid"],)).fetchone()[0]
+    conn.close()
+    assert totalprice == main.SEAT_TYPE_PRICES["Saver"] + main.SEAT_TYPE_PRICES["VIP"]
 
 
 def test_booking_rejects_seat_already_booked_by_someone_else(client, db_path, make_user, seeded_showing):

@@ -2,12 +2,14 @@
 <head>
     <title>Add a screen</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin_screen.css') }}">
     <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+    <script src="{{ url_for('static', filename='admin_screen.js') }}" defer></script>
 </head>
 <body>
 {% include "_banner.html" %}
 
-<div class="login-box">
+<div class="wizard-box">
     <div class="button">
         <a href="/admin">
             Back to admin
@@ -19,18 +21,62 @@
         {{ error }}
     </p>
     {% endif %}
-    <p>New screens get the standard 10&times;15 seat layout (rows A&ndash;J, 15 seats each).</p>
-    <form action="/admin/screens/new" method="post">
-        <p>
-            Screen name: <br />
-            <label>
-                <input type="text" name="screenname" required />
-            </label>
-        </p>
-        <p><br></p>
-        <input type="submit" value="Add screen" />
-        <input type="hidden" value="{{ session.csrf_token }}" name="csrf_token" />
-    </form>
+
+    <div id="wizard" data-max-rows="{{ max_rows }}" data-max-cols="{{ max_cols }}">
+        <form action="/admin/screens/new" method="post" id="screen-form">
+            <div class="wizard-step" id="step-1">
+                <h2>Step 1: Screen size</h2>
+                <p>
+                    Screen name: <br>
+                    <label>
+                        <input type="text" name="screenname" id="screenname" required>
+                    </label>
+                </p>
+                <p>
+                    Rows (1&ndash;{{ max_rows }}): <br>
+                    <label>
+                        <input type="number" id="rows-input" min="1" max="{{ max_rows }}" required>
+                    </label>
+                </p>
+                <p>
+                    Columns (1&ndash;{{ max_cols }}): <br>
+                    <label>
+                        <input type="number" id="cols-input" min="1" max="{{ max_cols }}" required>
+                    </label>
+                </p>
+                <p id="step-1-error" class="wizard-error"></p>
+                <button type="button" id="generate-grid-btn">Generate grid</button>
+            </div>
+
+            <div class="wizard-step" id="step-2" hidden>
+                <h2>Step 2: Remove seats that don't exist</h2>
+                <p>Click a seat to remove it (e.g. missing corners, gaps). Click again to add it back.</p>
+                <div class="wizard-grid" id="step-2-grid"></div>
+                <p id="step-2-error" class="wizard-error"></p>
+                <button type="button" data-back-to="step-1">Back</button>
+                <button type="button" id="to-step-3-btn">Next: assign seat types</button>
+            </div>
+
+            <div class="wizard-step" id="step-3" hidden>
+                <h2>Step 3: Assign seat types</h2>
+                <p>Pick a seat type, then click seats to paint them with it. All seats start as Regular.</p>
+                <div class="paint-picker">
+                    {% for type_name, price in seat_type_prices.items() %}
+                    <label class="paint-option">
+                        <input type="radio" name="paint-type" value="{{ type_name }}" {% if loop.first %}checked{% endif %}>
+                        {{ type_name }} &ndash; £{{ "%.2f"|format(price) }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="wizard-grid" id="step-3-grid"></div>
+                <button type="button" data-back-to="step-2">Back</button>
+                <button type="submit" id="create-screen-btn">Create screen</button>
+            </div>
+
+            <input type="hidden" name="layout_json" id="layout_json">
+            <input type="hidden" value="{{ session.csrf_token }}" name="csrf_token">
+        </form>
+    </div>
 </div>
 </body>
 </html>

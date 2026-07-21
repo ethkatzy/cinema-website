@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 import sqlite3
 
 from conftest import login_session
@@ -70,16 +71,75 @@ def test_film_creation_rejects_unknown_rating(client, db_path, make_user):
     assert count == 0
 
 
-def test_admin_can_create_screen_with_seats(client, db_path, make_user):
+def test_admin_can_create_screen_with_irregular_layout_and_mixed_types(client, db_path, make_user):
     admin = make_user(email="admin4@example.com", is_admin=True)
     token = login_session(client, admin["email"], is_admin=True)
-    resp = client.post("/admin/screens/new", data={"screenname": "Screen 12", "csrf_token": token})
+    layout = [
+        {"row": "A", "col": 1, "type": "Saver"},
+        {"row": "A", "col": 2, "type": "Regular"},
+        # A3 removed by the admin in step 2 - a gap, not a row present with 0 seats
+        {"row": "B", "col": 1, "type": "VIP"},
+    ]
+    resp = client.post("/admin/screens/new", data={
+        "screenname": "Screen 12",
+        "layout_json": json.dumps(layout),
+        "csrf_token": token,
+    })
     assert resp.status_code == 302
     conn = sqlite3.connect(db_path)
     screen_id = conn.execute("SELECT screenid FROM screen WHERE screenname = ?", ("Screen 12",)).fetchone()[0]
-    seat_count = conn.execute("SELECT COUNT(*) FROM seat WHERE screenid = ?", (screen_id,)).fetchone()[0]
+    seats = conn.execute(
+        "SELECT rownum, seatnum, seattype FROM seat WHERE screenid = ? ORDER BY rownum, seatnum", (screen_id,)
+    ).fetchall()
     conn.close()
-    assert seat_count == 150
+    assert seats == [("A", 1, "Saver"), ("A", 2, "Regular"), ("B", 1, "VIP")]
+
+
+def test_screen_creation_rejects_empty_layout(client, db_path, make_user):
+    admin = make_user(email="admin5@example.com", is_admin=True)
+    token = login_session(client, admin["email"], is_admin=True)
+    resp = client.post("/admin/screens/new", data={
+        "screenname": "Screen 13",
+        "layout_json": json.dumps([]),
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    conn = sqlite3.connect(db_path)
+    count = conn.execute("SELECT COUNT(*) FROM screen WHERE screenname = ?", ("Screen 13",)).fetchone()[0]
+    conn.close()
+    assert count == 0
+
+
+def test_screen_creation_rejects_duplicate_seat_position(client, db_path, make_user):
+    admin = make_user(email="admin6@example.com", is_admin=True)
+    token = login_session(client, admin["email"], is_admin=True)
+    layout = [{"row": "A", "col": 1, "type": "Regular"}, {"row": "A", "col": 1, "type": "VIP"}]
+    resp = client.post("/admin/screens/new", data={
+        "screenname": "Screen 14",
+        "layout_json": json.dumps(layout),
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    conn = sqlite3.connect(db_path)
+    count = conn.execute("SELECT COUNT(*) FROM screen WHERE screenname = ?", ("Screen 14",)).fetchone()[0]
+    conn.close()
+    assert count == 0
+
+
+def test_screen_creation_rejects_unknown_seat_type(client, db_path, make_user):
+    admin = make_user(email="admin7@example.com", is_admin=True)
+    token = login_session(client, admin["email"], is_admin=True)
+    layout = [{"row": "A", "col": 1, "type": "Gold"}]
+    resp = client.post("/admin/screens/new", data={
+        "screenname": "Screen 15",
+        "layout_json": json.dumps(layout),
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    conn = sqlite3.connect(db_path)
+    count = conn.execute("SELECT COUNT(*) FROM screen WHERE screenname = ?", ("Screen 15",)).fetchone()[0]
+    conn.close()
+    assert count == 0
 
 
 def _create_film(client, token, title):

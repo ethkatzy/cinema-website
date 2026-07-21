@@ -1,0 +1,32 @@
+<div class="screen">Screen</div>
+<div class="seat-grid" style="grid-template-columns: repeat({{ max_col + 1 }}, auto);">
+    <div class="seat-label" style="grid-row: 1; grid-column: 1;"></div>
+    {% for col in range(1, max_col + 1) %}
+    <div class="seat-label" style="grid-row: 1; grid-column: {{ col + 1 }};">{{ col }}</div>
+    {% endfor %}
+    {% for row in rows %}
+    <div class="row-label" style="grid-row: {{ loop.index + 1 }}; grid-column: 1;">{{ row }}</div>
+    {% endfor %}
+    {% for seat in seats %}
+    {% set cell_style = "grid-row: " ~ seat.grid_row ~ "; grid-column: " ~ seat.grid_col ~ ";" %}
+    {% set seat_title = seat.seattype ~ " - £" ~ "%.2f"|format(seat_type_prices[seat.seattype]) %}
+    {% if user_seats is defined and seat.seatid in booked_seat_ids and seat.seatid not in user_seats %}
+    <div class="seat booked seat-{{ seat.seattype|lower }}" style="{{ cell_style }}" title="{{ seat_title }}">X</div>
+    {% elif user_seats is defined and seat.seatid in user_seats %}
+    <label class="seat selected seat-{{ seat.seattype|lower }}" style="{{ cell_style }}" title="{{ seat_title }}">
+        <input type="checkbox" name="seats" value="{{ seat.seatid }} {{ booking_id }}" checked>
+    </label>
+    {% elif seat.seatid in booked_seat_ids %}
+    <div class="seat booked seat-{{ seat.seattype|lower }}" style="{{ cell_style }}" title="{{ seat_title }}"></div>
+    {% else %}
+    <label class="seat available seat-{{ seat.seattype|lower }}" style="{{ cell_style }}" title="{{ seat_title }}">
+        <input type="checkbox" name="seats" value="{{ seat.seatid }}{% if booking_id %} {{ booking_id }}{% endif %}">
+    </label>
+    {% endif %}
+    {% endfor %}
+</div>
+<div class="seat-legend">
+    {% for type_name, price in seat_type_prices.items() %}
+    <span class="legend-item"><span class="legend-swatch seat-{{ type_name|lower }}"></span>{{ type_name }} &ndash; £{{ "%.2f"|format(price) }}</span>
+    {% endfor %}
+</div>

@@ -10,31 +10,8 @@
 <body>
 {% include "_banner.html" %}
 <h1>Seat Selection for {{details[0][0]}} on {{details[0][1]}}</h1>
-<div class="screen">Screen</div>
 <form method="POST" action="/edit/confirm">
-    <div class="seat-grid">
-        <div class="seat-label"></div>
-        {% for col in range(1, 16) %}
-        <div class="seat-label">{{ col }}</div>
-        {% endfor %}
-        {% for row in "ABCDEFGHIJ" %}
-        <div class="row-label">{{ row }}</div>
-        {% for col in range(1, 16) %}
-        {% set seatId = seats|selectattr("rownum", "eq", row)|selectattr("seatnum", "eq", col)|map(attribute="seatid")|first %}
-        {% if seatId in booked_seat_ids and seatId not in user_seats %}
-        <div class="seat booked">X</div>
-        {% elif seatId in user_seats %}
-        <label class="seat selected">
-            <input type="checkbox" name="seats" value="{{ seatId }} {{booking_id}}" checked>
-        </label>
-        {% else %}
-        <label class="seat available">
-            <input type="checkbox" name="seats" value="{{ seatId }} {{booking_id}}">
-        </label>
-        {% endif %}
-        {% endfor %}
-        {% endfor %}
-    </div>
+    {% include "_seat_grid.html" %}
     <div class="other-info">
         <label for="other-info">Anything else we should know?
             <input type="text" name="other-info" id="other-info" placeholder="E.g. disabilities, pre-order snacks, etc">
