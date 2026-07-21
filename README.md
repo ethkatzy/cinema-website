@@ -42,3 +42,12 @@ ruff check .
 
 ### CI
 Every push and pull request against `main` runs lint (`ruff`) and the test suite (`pytest`) via GitHub Actions — see `.github/workflows/ci.yml`.
+
+### Deploying (Render)
+The repo includes a `render.yaml` blueprint, so Render can build and run the app with no manual config:
+1. Push this repo to GitHub (already done if you're reading this on GitHub).
+2. On [render.com](https://render.com), New → Blueprint → connect the `cinema-website` repo. Render reads `render.yaml` and creates a free web service (`gunicorn` serving `main:app`).
+3. Render sets `FLASK_ENV=production` and generates a random `CINEMA_SECRET_KEY` automatically (see `render.yaml`).
+4. On first boot, `main.py` creates `CinemaDatabase.db` from `schema.sql` if it doesn't already exist (the `.db` file itself is gitignored, so it's never committed).
+
+Note: Render's free tier disk is ephemeral, so `CinemaDatabase.db` — and anything written to it (signups, bookings) — resets to the `schema.sql` seed data on every redeploy. That's fine for a demo/portfolio link; it isn't a durable production database.

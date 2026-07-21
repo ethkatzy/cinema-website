@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: cinema-website
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -b 0.0.0.0:$PORT main:app"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: CINEMA_SECRET_KEY
+        generateValue: true

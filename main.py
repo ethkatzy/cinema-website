@@ -2,6 +2,7 @@ import os
 import secrets
 import time
 from collections import defaultdict
+from pathlib import Path
 
 from flask import Flask, render_template, request, redirect, session, abort
 import sqlite3
@@ -17,6 +18,7 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
 
 DB_PATH = "CinemaDatabase.db"
+SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 TICKET_PRICE = 8.99
 
 LOGIN_ATTEMPT_LIMIT = 5
@@ -24,8 +26,18 @@ LOGIN_ATTEMPT_WINDOW_SECONDS = 300
 _login_attempts = defaultdict(list)
 
 
+def init_db_if_needed():
+    if os.path.exists(DB_PATH):
+        return
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.executescript(SCHEMA_PATH.read_text(encoding="cp1252"))
+
+
 def get_db():
     return sqlite3.connect(DB_PATH)
+
+
+init_db_if_needed()
 
 
 def check_csrf():
