@@ -308,6 +308,13 @@ def get_seats_for_showing(cursor, showing_id):
             for row in cursor.fetchall()]
 
 
+def get_seats_for_screen(cursor, screen_id):
+    cursor.execute("""SELECT seatid, rownum, seatnum, seattype FROM seat
+        WHERE screenid = ? ORDER BY rownum, seatnum""", (screen_id,))
+    return [{"seatid": row[0], "rownum": row[1], "seatnum": row[2], "seattype": row[3]}
+            for row in cursor.fetchall()]
+
+
 def build_seat_grid(seats):
     """Annotate seats with 1-based grid_row/grid_col so irregular per-screen
     layouts (missing rows, gaps within a row) render as blank grid cells
@@ -376,6 +383,37 @@ def parse_seat_layout(raw_json):
         seen_positions.add((row, col))
         seats.append((row, col, seat_type))
     return seats
+
+
+def parse_seat_type_edits(raw_json, valid_seat_ids):
+    """Parse and validate the edit page's [{seatid, type}, ...] JSON payload.
+    Every existing seat on the screen must appear exactly once with a valid
+    type; seats can't be added or removed from this page."""
+    try:
+        layout = json.loads(raw_json)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Malformed seat layout") from exc
+    if not isinstance(layout, list) or not layout:
+        raise ValueError("Malformed seat layout")
+
+    seen_ids = set()
+    updates = []
+    for entry in layout:
+        if not isinstance(entry, dict) or set(entry) != {"seatid", "type"}:
+            raise ValueError("Malformed seat layout")
+        seat_id, seat_type = entry["seatid"], entry["type"]
+        if not isinstance(seat_id, int) or isinstance(seat_id, bool) or seat_id not in valid_seat_ids:
+            raise ValueError("Malformed seat layout")
+        if seat_type not in SEAT_TYPE_PRICES:
+            raise ValueError("Malformed seat layout")
+        if seat_id in seen_ids:
+            raise ValueError("Malformed seat layout")
+        seen_ids.add(seat_id)
+        updates.append((seat_type, seat_id))
+
+    if seen_ids != valid_seat_ids:
+        raise ValueError("Malformed seat layout")
+    return updates
 
 
 @app.route('/')
@@ -790,6 +828,53 @@ def admin_new_screen():
         )
         conn.commit()
     return redirect("/admin")
+
+
+@app.route("/admin/screens")
+def admin_list_screens():
+    resp = require_admin()
+    if resp:
+        return resp
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT screenid, screenname FROM screen ORDER BY screenid")
+        screens = cursor.fetchall()
+    return render_template("admin_screens.html", screens=screens)
+
+
+@app.route("/admin/screens/<int:screen_id>/edit", methods=["GET", "POST"])
+def admin_edit_screen(screen_id):
+    resp = require_admin()
+    if resp:
+        return resp
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT screenname FROM screen WHERE screenid = ?", (screen_id,))
+        screen = cursor.fetchone()
+        if screen is None:
+            abort(404)
+        seats = get_seats_for_screen(cursor, screen_id)
+
+        def render_edit_page(error=None):
+            issue_csrf_token()
+            grid = build_seat_grid(seats)
+            return render_template("admin_screen_edit.html", screenname=screen[0], screen_id=screen_id,
+                                   seat_type_prices=SEAT_TYPE_PRICES, error=error, **grid)
+
+        if request.method != "POST":
+            return render_edit_page()
+
+        check_csrf()
+        valid_seat_ids = {seat["seatid"] for seat in seats}
+        try:
+            updates = parse_seat_type_edits(request.form.get("layout_json", ""), valid_seat_ids)
+        except ValueError:
+            return render_edit_page("Malformed seat layout submitted")
+
+        cursor.executemany("UPDATE seat SET seattype = ? WHERE seatid = ?", updates)
+        conn.commit()
+    return redirect("/admin/screens")
 
 
 @app.route("/admin/showings/new", methods=["GET", "POST"])

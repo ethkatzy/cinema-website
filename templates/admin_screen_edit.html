@@ -1,0 +1,60 @@
+<html lang="en">
+<head>
+    <title>Edit screen</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin_screen.css') }}">
+    <link rel="icon" type="image/x-icon" href="https://svgsilh.com/svg/2027080.svg">
+    <script src="{{ url_for('static', filename='admin_screen_edit.js') }}" defer></script>
+</head>
+<body>
+{% include "_banner.html" %}
+
+<div class="wizard-box">
+    <div class="button">
+        <a href="/admin/screens">
+            Back to screens
+        </a>
+    </div>
+
+    <h2 style="color:white">Edit seat types &ndash; {{ screenname }}</h2>
+    <p style="color:white">Pick a seat type, then click seats to change them. Rows, columns and seat count can't be changed here.</p>
+
+    {% if error %}
+    <p style="color: red">
+        {{ error }}
+    </p>
+    {% endif %}
+
+    <form action="/admin/screens/{{ screen_id }}/edit" method="post" id="edit-form">
+        <div class="paint-picker">
+            {% for type_name, price in seat_type_prices.items() %}
+            <label class="paint-option">
+                <input type="radio" name="paint-type" value="{{ type_name }}" {% if loop.first %}checked{% endif %}>
+                {{ type_name }} &ndash; £{{ "%.2f"|format(price) }}
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="wizard-grid" id="edit-grid" style="grid-template-columns: repeat({{ max_col + 1 }}, auto);">
+            <div class="wizard-label" style="grid-row: 1; grid-column: 1;"></div>
+            {% for col in range(1, max_col + 1) %}
+            <div class="wizard-label" style="grid-row: 1; grid-column: {{ col + 1 }};">{{ col }}</div>
+            {% endfor %}
+            {% for row in rows %}
+            <div class="wizard-label" style="grid-row: {{ loop.index + 1 }}; grid-column: 1;">{{ row }}</div>
+            {% endfor %}
+            {% for seat in seats %}
+            <button type="button" class="wizard-seat type-{{ seat.seattype|lower }}"
+                    style="grid-row: {{ seat.grid_row }}; grid-column: {{ seat.grid_col }};"
+                    data-seatid="{{ seat.seatid }}" data-type="{{ seat.seattype }}"
+                    title="{{ seat.rownum }}{{ seat.seatnum }}"></button>
+            {% endfor %}
+        </div>
+
+        <input type="hidden" name="layout_json" id="layout_json">
+        <input type="hidden" value="{{ session.csrf_token }}" name="csrf_token">
+        <button type="submit">Save changes</button>
+    </form>
+</div>
+</body>
+</html>

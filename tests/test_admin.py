@@ -4,7 +4,16 @@ import sqlite3
 
 from conftest import login_session
 
-ADMIN_ROUTES = ["/admin", "/admin/films/new", "/admin/screens/new", "/admin/showings/new"]
+ADMIN_ROUTES = ["/admin", "/admin/films/new", "/admin/screens/new", "/admin/screens", "/admin/showings/new"]
+
+
+def get_screen_seats(db_path, screen_id):
+    conn = sqlite3.connect(db_path)
+    rows = conn.execute(
+        "SELECT seatid, seattype FROM seat WHERE screenid = ? ORDER BY rownum, seatnum", (screen_id,)
+    ).fetchall()
+    conn.close()
+    return rows
 
 
 def test_anonymous_gets_login_page_on_admin_routes(client):
@@ -303,3 +312,98 @@ def test_showing_creation_rejects_range_over_max_days(client, db_path, make_user
     ).fetchone()[0]
     conn.close()
     assert count == 0
+
+
+def test_anonymous_and_non_admin_are_blocked_from_screen_edit(client, make_user):
+    resp = client.get("/admin/screens/10/edit")
+    assert resp.status_code == 200
+    assert b'name="password"' in resp.data
+
+    user = make_user(email="regular2@example.com", is_admin=False)
+    login_session(client, user["email"])
+    resp = client.get("/admin/screens/10/edit")
+    assert resp.status_code == 403
+
+
+def test_admin_can_list_screens(client, make_user):
+    admin = make_user(email="admin10@example.com", is_admin=True)
+    login_session(client, admin["email"], is_admin=True)
+    resp = client.get("/admin/screens")
+    assert resp.status_code == 200
+    assert b"Screen 10" in resp.data
+
+
+def test_edit_screen_unknown_id_is_404(client, make_user):
+    admin = make_user(email="admin11@example.com", is_admin=True)
+    login_session(client, admin["email"], is_admin=True)
+    resp = client.get("/admin/screens/99999/edit")
+    assert resp.status_code == 404
+
+
+def test_admin_can_edit_seat_types(client, db_path, make_user):
+    admin = make_user(email="admin12@example.com", is_admin=True)
+    token = login_session(client, admin["email"], is_admin=True)
+    seats = get_screen_seats(db_path, 10)
+
+    layout = [{"seatid": seatid, "type": seattype} for seatid, seattype in seats]
+    layout[0]["type"] = "VIP"
+    layout[1]["type"] = "Saver"
+
+    resp = client.post("/admin/screens/10/edit", data={
+        "layout_json": json.dumps(layout),
+        "csrf_token": token,
+    })
+    assert resp.status_code == 302
+
+    updated = dict(get_screen_seats(db_path, 10))
+    assert updated[layout[0]["seatid"]] == "VIP"
+    assert updated[layout[1]["seatid"]] == "Saver"
+    # Everything else must be untouched.
+    for seatid, original_type in seats[2:]:
+        assert updated[seatid] == original_type
+
+
+def test_screen_edit_rejects_missing_seat(client, db_path, make_user):
+    admin = make_user(email="admin13@example.com", is_admin=True)
+    token = login_session(client, admin["email"], is_admin=True)
+    seats = get_screen_seats(db_path, 10)
+    layout = [{"seatid": seatid, "type": seattype} for seatid, seattype in seats[:-1]]  # drop one seat
+
+    resp = client.post("/admin/screens/10/edit", data={
+        "layout_json": json.dumps(layout),
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    assert dict(get_screen_seats(db_path, 10)) == dict(seats)
+
+
+def test_screen_edit_rejects_unknown_seat_type(client, db_path, make_user):
+    admin = make_user(email="admin14@example.com", is_admin=True)
+    token = login_session(client, admin["email"], is_admin=True)
+    seats = get_screen_seats(db_path, 10)
+    layout = [{"seatid": seatid, "type": seattype} for seatid, seattype in seats]
+    layout[0]["type"] = "Gold"
+
+    resp = client.post("/admin/screens/10/edit", data={
+        "layout_json": json.dumps(layout),
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    assert dict(get_screen_seats(db_path, 10)) == dict(seats)
+
+
+def test_screen_edit_rejects_seat_from_another_screen(client, db_path, make_user):
+    admin = make_user(email="admin15@example.com", is_admin=True)
+    token = login_session(client, admin["email"], is_admin=True)
+    seats = get_screen_seats(db_path, 10)
+    other_screen_seat_id = get_screen_seats(db_path, 11)[0][0]
+
+    layout = [{"seatid": seatid, "type": seattype} for seatid, seattype in seats[:-1]]
+    layout.append({"seatid": other_screen_seat_id, "type": "VIP"})
+
+    resp = client.post("/admin/screens/10/edit", data={
+        "layout_json": json.dumps(layout),
+        "csrf_token": token,
+    })
+    assert resp.status_code == 200
+    assert dict(get_screen_seats(db_path, 10)) == dict(seats)

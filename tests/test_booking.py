@@ -73,8 +73,15 @@ def test_booking_creates_booking_for_logged_in_user(client, db_path, make_user, 
     }
     conn.close()
 
+    conn = sqlite3.connect(db_path)
+    seat_types = [row[0] for row in conn.execute(
+        f"SELECT seattype FROM seat WHERE seatid IN ({','.join('?' * len(seat_ids))})", seat_ids
+    ).fetchall()]
+    conn.close()
+    expected_price = sum(main.SEAT_TYPE_PRICES[seat_type] for seat_type in seat_types)
+
     assert booking[1] == user["userid"]
-    assert booking[2] == main.SEAT_TYPE_PRICES["Regular"] * 2
+    assert booking[2] == expected_price
     assert booking[3] == "wheelchair access"
     assert seats_booked == set(seat_ids)
 
